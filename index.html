@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle Escritório | Controle de Equipes</title>
+  <style>
+    :root{
+      --bg:#f4f6f9;
+      --card:#ffffff;
+      --ink:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --nav:#101827;
+      --nav2:#172033;
+      --gold:#c9a45c;
+      --accent:#1d4ed8;
+      --success:#16a34a;
+      --danger:#dc2626;
+      --warning:#d97706;
+      --radius:20px;
+      --shadow:0 20px 60px rgba(15,23,42,.10);
+      --soft:0 8px 24px rgba(15,23,42,.08);
+      --font:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);background:linear-gradient(135deg,#f8fafc 0%,var(--bg) 48%,#edf2f7 100%);color:var(--ink);min-height:100vh}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer;border:0}
+    .hidden{display:none!important}
+    .app-shell{min-height:100vh}
+    .auth-page{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;background:radial-gradient(circle at top left, rgba(201,164,92,.22), transparent 32%),linear-gradient(135deg,#0b1120 0%,#111827 48%,#172033 100%);color:#fff;overflow:hidden}
+    .auth-hero{padding:58px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+    .auth-hero:after{content:"";position:absolute;right:-140px;bottom:-180px;width:420px;height:420px;background:rgba(201,164,92,.16);filter:blur(8px);border-radius:999px}
+    .brand{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+    .brand-mark{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--gold),#fff0b3);color:#111827;display:grid;place-items:center;font-weight:900;box-shadow:0 12px 30px rgba(201,164,92,.25)}
+    .brand h1{font-size:20px;margin:0;letter-spacing:.2px}.brand p{margin:2px 0 0;color:#d1d5db;font-size:13px}
+    .hero-copy{max-width:720px;position:relative;z-index:1}.hero-copy .tag{display:inline-flex;gap:8px;align-items:center;padding:9px 13px;border:1px solid rgba(255,255,255,.15);border-radius:999px;background:rgba(255,255,255,.06);color:#f9fafb;font-size:13px;margin-bottom:20px}.hero-copy h2{font-size:clamp(36px,5vw,68px);line-height:.98;margin:0 0 22px;letter-spacing:-2px}.hero-copy p{font-size:17px;color:#d1d5db;line-height:1.7;margin:0;max-width:620px}.hero-pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}.hero-pills span{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#e5e7eb;font-size:13px}
+    .auth-card-wrap{display:flex;align-items:center;justify-content:center;padding:42px;position:relative;z-index:2}.auth-card{width:min(560px,100%);background:rgba(255,255,255,.98);color:var(--ink);border-radius:28px;padding:28px;box-shadow:0 30px 90px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.55)}
+    .auth-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:#f3f4f6;padding:6px;border-radius:16px;margin-bottom:22px}.auth-tabs button{border-radius:12px;padding:12px 10px;background:transparent;color:#6b7280;font-weight:700;font-size:13px}.auth-tabs button.active{background:#111827;color:#fff;box-shadow:var(--soft)}
+    .form-grid{display:grid;gap:14px}.field{display:grid;gap:7px}.field label{font-size:12px;color:#4b5563;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.field input,.field select,.field textarea{width:100%;border:1px solid #e5e7eb;background:#f9fafb;border-radius:14px;padding:13px 14px;color:#111827;outline:none}.field textarea{min-height:92px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:#111827;background:#fff;box-shadow:0 0 0 4px rgba(17,24,39,.08)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;padding:12px 16px;font-weight:800;border:1px solid transparent;background:var(--nav);color:#fff;transition:.18s}.btn:hover{transform:translateY(-1px);box-shadow:var(--soft)}.btn.secondary{background:#fff;color:#111827;border-color:#e5e7eb}.btn.gold{background:linear-gradient(135deg,var(--gold),#e7c879);color:#111827}.btn.danger{background:#fff;color:#b91c1c;border-color:#fecaca}.btn.success{background:#ecfdf5;color:#166534;border-color:#bbf7d0}.btn.ghost{background:transparent;color:#374151;border-color:#e5e7eb}.btn.small{padding:9px 11px;border-radius:11px;font-size:12px}.link-btn{background:transparent;color:#1d4ed8;padding:0;font-weight:700}.muted{color:var(--muted)}.micro{font-size:12px}.notice{padding:13px 14px;border-radius:16px;background:#f8fafc;border:1px solid #e5e7eb;color:#475569;font-size:13px;line-height:1.5}.notice.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}.notice.good{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+    .main-layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}.sidebar{background:linear-gradient(180deg,#0d1526,#111827 64%,#0b1120);color:#fff;padding:24px;position:sticky;top:0;height:100vh;overflow:auto}.sidebar .brand{margin-bottom:26px}.user-chip{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);margin-bottom:18px}.avatar{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#d8b86a,#fff1b8);color:#111827;display:grid;place-items:center;font-weight:900}.user-chip b{display:block}.user-chip span{display:block;color:#cbd5e1;font-size:12px;margin-top:2px}.side-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin:20px 8px 9px}.side-nav{display:grid;gap:7px}.side-nav button{display:flex;align-items:center;gap:10px;width:100%;padding:12px 12px;border-radius:14px;background:transparent;color:#d1d5db;text-align:left}.side-nav button:hover,.side-nav button.active{background:rgba(255,255,255,.09);color:#fff}.side-nav .lock{margin-left:auto;font-size:12px;color:#94a3b8}.sector-access-on{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:28px;padding:0 10px;border-radius:999px;background:rgba(34,197,94,.14);border:1px solid rgba(74,222,128,.25);color:#d1fae5;font-size:12px;font-weight:900;text-transform:lowercase}.content{min-width:0}.topbar{height:76px;background:rgba(255,255,255,.86);backdrop-filter:blur(18px);border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:10}.topbar h2{margin:0;font-size:20px}.topbar p{margin:3px 0 0;color:#6b7280;font-size:13px}.top-actions{display:flex;gap:10px;align-items:center}.page{padding:24px;max-width:1500px;margin:0 auto}.lux-card{background:var(--card);border:1px solid rgba(226,232,240,.9);border-radius:var(--radius);box-shadow:var(--soft)}.panel{padding:20px}.dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.kpi{padding:18px;border-radius:22px;color:#fff;min-height:130px;position:relative;overflow:hidden;box-shadow:var(--soft)}.kpi:after{content:"";position:absolute;width:120px;height:120px;right:-30px;top:-38px;border-radius:999px;background:rgba(255,255,255,.14)}.kpi .icon{position:absolute;right:18px;top:18px;width:38px;height:38px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.14)}.kpi label{font-weight:800;font-size:13px;color:rgba(255,255,255,.86)}.kpi strong{display:block;font-size:32px;margin:10px 0 4px;letter-spacing:-1px}.kpi small{color:rgba(255,255,255,.78)}.kpi.navy{background:linear-gradient(135deg,#111827,#263655)}.kpi.teal{background:linear-gradient(135deg,#0f766e,#4db6a7)}.kpi.green{background:linear-gradient(135deg,#16a34a,#49d16d)}.kpi.blue{background:linear-gradient(135deg,#0284c7,#22c1ee)}.kpi.gold{background:linear-gradient(135deg,#d97706,#fbbf24)}.kpi.purple{background:linear-gradient(135deg,#6d28d9,#a78bfa)}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px}.section-head h3{margin:0;font-size:18px}.section-head p{margin:3px 0 0;color:#6b7280;font-size:13px}.sector-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.sector-card{padding:18px;border-radius:22px;background:#fff;border:1px solid #e5e7eb;box-shadow:var(--soft);transition:.18s;text-align:left;position:relative;overflow:hidden}.sector-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}.sector-card .sector-icon{width:46px;height:46px;border-radius:16px;background:#f8fafc;display:grid;place-items:center;font-size:22px;margin-bottom:14px}.sector-card h4{margin:0 0 7px;font-size:16px}.sector-card p{margin:0;color:#6b7280;font-size:13px;line-height:1.45}.sector-card .status-pill{margin-top:14px}.status-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:#f3f4f6;color:#374151;font-size:12px;font-weight:800}.status-pill.ok{background:#ecfdf5;color:#166534}.status-pill.warn{background:#fffbeb;color:#92400e}.status-pill.bad{background:#fef2f2;color:#991b1b}.status-pill.info{background:#eff6ff;color:#1d4ed8}.status-pill.gold{background:#fffbeb;color:#a16207}.tabs-wrap{display:flex;align-items:center;gap:10px;overflow:auto;border:1px solid #e5e7eb;border-radius:16px;background:#fff;padding:6px;box-shadow:var(--soft)}.tab-btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;padding:11px 13px;border-radius:12px;color:#4b5563;background:transparent;font-weight:750;font-size:13px}.tab-btn.active{background:#111827;color:#fff}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:18px 0}.toolbar-left,.toolbar-right{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.filter-box{display:none;margin:12px 0 0;padding:16px;border-radius:18px;background:#fff;border:1px solid #e5e7eb}.filter-box.open{display:block}.filter-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.table-wrap{overflow:auto;border-radius:18px;border:1px solid #e5e7eb;background:#fff}table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px}th,td{text-align:left;padding:13px 14px;border-bottom:1px solid #eef2f7;font-size:13px;vertical-align:top}th{background:#f8fafc;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-size:11px;font-weight:900}tr:last-child td{border-bottom:0}.client-cell b{display:block;font-size:13px}.client-cell span{display:block;color:#6b7280;font-size:12px;margin-top:3px}.progress-line{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;min-width:90px}.progress-line i{display:block;height:100%;background:linear-gradient(90deg,#111827,var(--accent));border-radius:999px}.mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.two-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}.chart-card{padding:18px;border-radius:20px;background:#fff;border:1px solid #e5e7eb;box-shadow:var(--soft)}.bar-chart{display:grid;gap:10px}.bar-row{display:grid;grid-template-columns:110px 1fr 56px;gap:10px;align-items:center;font-size:13px}.bar-bg{height:12px;background:#edf2f7;border-radius:999px;overflow:hidden}.bar-bg i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#60a5fa);border-radius:999px}.donut{--p:0;width:150px;height:150px;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--p)*1%),#e5e7eb 0);display:grid;place-items:center;margin:auto}.donut span{width:104px;height:104px;background:#fff;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:26px}.empty{padding:42px;text-align:center;color:#64748b}.empty b{display:block;color:#111827;margin-bottom:5px}.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.58);display:none;align-items:center;justify-content:center;z-index:60;padding:18px}.modal-backdrop.open{display:flex}.modal{width:min(860px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;box-shadow:0 30px 100px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.6)}.modal.small{width:min(560px,100%)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid #e5e7eb}.modal-head h3{margin:0}.modal-body{padding:22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid #e5e7eb;background:#f8fafc;border-radius:0 0 26px 26px}.x{width:34px;height:34px;border-radius:12px;background:#f3f4f6;color:#111827}.check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.check-tile{display:flex;gap:8px;align-items:center;border:1px solid #e5e7eb;border-radius:14px;padding:11px;background:#f9fafb;font-size:13px}.check-tile input{width:auto}.history-list{display:grid;gap:10px}.history-item{padding:13px 14px;border-radius:16px;background:#f8fafc;border:1px solid #e5e7eb}.history-item b{display:block}.history-item span{display:block;color:#64748b;font-size:12px;margin-top:3px}.mobile-toggle{display:none}.toast{position:fixed;right:22px;bottom:22px;background:#111827;color:#fff;padding:13px 16px;border-radius:16px;box-shadow:var(--shadow);z-index:80;display:none}.toast.show{display:block}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.metric-list{display:grid;gap:10px}.metric-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}.metric-item span{color:#6b7280;font-size:13px}.metric-item b{font-size:18px}.report-preview{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:22px}.report-cover{border-radius:22px;background:linear-gradient(135deg,#0f172a,#1f2937);color:#fff;padding:28px;margin-bottom:18px}.report-cover h2{margin:0 0 8px;font-size:30px}.report-cover p{color:#cbd5e1;margin:0}.divider{height:1px;background:#e5e7eb;margin:18px 0}.settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.color-field{display:grid;grid-template-columns:1fr 54px;gap:8px;align-items:end}.color-field input[type=color]{height:46px;padding:4px}.compact-card{padding:15px;border-radius:18px;border:1px solid #e5e7eb;background:#fff}.kanban{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:12px;overflow:auto}.kanban-col{background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:12px;min-height:220px}.kanban-col h4{margin:0 0 10px;font-size:13px;color:#475569;text-transform:uppercase;letter-spacing:.05em}.kanban-card{padding:12px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;margin-bottom:10px;box-shadow:0 4px 12px rgba(15,23,42,.04)}.kanban-card b{display:block;font-size:13px}.kanban-card span{display:block;color:#6b7280;font-size:12px;margin-top:4px}.hamb{display:none}.subtle-line{display:flex;align-items:center;gap:8px;color:#64748b;font-size:13px}.subtle-line:before{content:"";width:7px;height:7px;background:var(--accent);border-radius:999px}.request-card{display:grid;grid-template-columns:1fr auto;gap:12px;padding:15px;border:1px solid #e5e7eb;border-radius:18px;background:#fff}.request-card h4{margin:0 0 4px}.request-card p{margin:0;color:#6b7280;font-size:13px}.client-admin-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:16px}.lux-divider-title{display:flex;align-items:center;gap:10px;margin:22px 0 12px}.lux-divider-title:after{content:"";height:1px;background:#e5e7eb;flex:1}.app-footer-note{padding:14px;border-radius:18px;background:#f8fafc;border:1px dashed #cbd5e1;color:#64748b;font-size:13px;line-height:1.5}.ref-chip{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-weight:800;font-size:13px}.search-field{position:relative}.search-field .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:#64748b}.search-field input{padding-left:38px}.micro-note{font-size:12px;color:#64748b;line-height:1.5}.task-flow-note{padding:12px 14px;border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;color:#475569;font-size:12px;line-height:1.45}
+    @media(max-width:1180px){.dashboard-grid,.sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two-grid,.client-admin-grid{grid-template-columns:1fr}.mini-grid{grid-template-columns:1fr 1fr}.auth-page{grid-template-columns:1fr}.auth-hero{min-height:520px}.main-layout{grid-template-columns:1fr}.sidebar{position:fixed;left:-320px;top:0;z-index:50;width:300px;transition:.2s}.sidebar.open{left:0}.hamb,.mobile-toggle{display:inline-flex}.topbar{padding:0 16px}.page{padding:16px}.kanban{grid-template-columns:repeat(2,minmax(220px,1fr))}}
+    @media(max-width:720px){.auth-hero{padding:34px 22px}.auth-card-wrap{padding:18px}.auth-card{padding:20px;border-radius:22px}.row,.dashboard-grid,.sector-grid,.mini-grid,.settings-grid,.check-grid{grid-template-columns:1fr}.filter-grid{grid-template-columns:1fr}.top-actions{gap:6px}.top-actions .hide-sm{display:none}.tabs-wrap{border-radius:14px}.kpi{min-height:116px}.modal-body{padding:16px}.modal-head,.modal-foot{padding:16px}.kanban{grid-template-columns:1fr}}
+    @media print{.sidebar,.topbar,.toolbar,.tabs-wrap,.modal-backdrop,.toast{display:none!important}.main-layout{display:block}.page{max-width:none;padding:0}.lux-card{box-shadow:none;border:0}.report-preview{border:0}}
+  
+    .side-nav button.active[data-sector]{background:rgba(34,197,94,.18);color:#dcfce7;border:1px solid rgba(74,222,128,.30);box-shadow:inset 0 0 0 1px rgba(34,197,94,.10)}
+    .money-preview{padding:10px 12px;border:1px solid #dbeafe;background:#eff6ff;border-radius:12px;color:#1e3a8a;font-weight:900;font-size:13px}
+    .special-table-note{padding:13px 14px;border-radius:16px;background:#f8fafc;border:1px dashed #cbd5e1;color:#475569;font-size:13px;line-height:1.55;margin-bottom:14px}
+    .tab-context{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+    .dark-auto-note{font-size:12px;color:#64748b;line-height:1.5}
+</style>
+</head>
+<body>
+  <div id="app" class="app-shell"></div>
+  <div id="modalRoot" class="modal-backdrop"></div>
+  <div id="toast" class="toast"></div>
+
+<script>
+/*
+  Controle Escritório - Protótipo HTML/CSS/JS
+  ---------------------------------------------------------------
+  Este arquivo é uma simulação visual e funcional em navegador.
+  Para testar rápido, os dados ficam no localStorage.
+  Na etapa de produção, substitua as funções API abaixo por chamadas ao Supabase/Firebase/API própria:
+  - api.createCompany
+  - api.createUserRequest
+  - api.login
+  - api.approveUser
+  - api.saveTask
+  - api.saveClient
+  - api.resetPassword
+  - api.exportReport
+*/
+const DB_KEY = "controle_escritorio_v7";
+const SESSION_KEY = "controle_escritorio_session_v7";
+const MONTHS = ["01/2026","02/2026","03/2026","04/2026","05/2026","06/2026","07/2026","08/2026","09/2026","10/2026","11/2026","12/2026"];
+const STATUS = ["Pendente","DRE INICIADA","DRE FINALIZADA","DRE ENVIADA","Em andamento","Recebido","Salvo na pasta","Contabilizado","Em elaboração","Finalizada","Enviada ao cliente","Importada","Conferida","Corrigida","Em apuração","Apurada","Transmitida","Protocolado","Finalizado","Concluído","Emitida","Enviada","Recebida","Processada","Publicado","Atualizado","Atualizadas","Analisadas","Conforme","Resolvida","Atrasada","Cancelada"];
+const PRIORITIES = ["Baixa","Normal","Alta","Crítica"];
+const SECTOR_LIBRARY = [
+  {key:"gestao", name:"Gestão/Diretores", icon:"🏛️", color:"#111827", desc:"Visão executiva, metas, aprovações e resultado geral.", tabs:["Visão Geral","Clientes","Metas","Aprovações","Equipe","Financeiro","Performance","Relatório Executivo"], templates:["Revisar resultado mensal","Acompanhar inadimplência","Reunião estratégica com cliente","Aprovar relatório executivo","Analisar carteira de clientes"]},
+  {key:"contabil", name:"Contábil", icon:"📊", color:"#1d4ed8", desc:"Extratos, DRE, balancete, lucro distribuído e fechamento contábil.", tabs:["Visão Geral","Clientes","Extratos","Pendências","DRE","Distribuição de Lucros","Reuniões","Ranking","Performance","Relatório Executivo"], templates:["DRE INICIADA","DRE FINALIZADA","DRE ENVIADA","Receber extrato bancário","Salvar extrato na pasta","Conferir lançamentos contábeis","Registrar distribuição de lucros"]},
+  {key:"fiscal", name:"Fiscal", icon:"🧾", color:"#0f766e", desc:"Notas, apurações, impostos, declarações e pendências fiscais.", tabs:["Visão Geral","Clientes","Notas Fiscais","Apuração","Obrigações","Reinf/DCTFWeb","Pendências","Ranking","Performance","Relatório Executivo"], templates:["Importar notas fiscais","Conferir entradas e saídas","Apurar Simples Nacional","Conferir retenções","Transmitir EFD-Reinf","Conferir DCTFWeb/MIT","Enviar guia ao cliente"]},
+  {key:"constitutivo", name:"Constitutivo", icon:"🏢", color:"#7c3aed", desc:"Abertura, alteração, baixa, certidões e processos societários.", tabs:["Visão Geral","Clientes","Aberturas","Alterações","Baixas","Certidões","Junta/Receita","Ranking","Performance","Relatório Executivo"], templates:["Analisar viabilidade","Emitir DBE","Protocolar processo na Junta","Acompanhar exigências","Emitir contrato/alteração","Baixar certidões","Finalizar processo societário"]},
+  {key:"financeiro", name:"Financeiros", icon:"💳", color:"#d97706", desc:"Entradas, cobranças, contratos, inadimplência e crescimento.", tabs:["Visão Geral","Clientes","Entradas","Cobranças","Contas a Receber","Inadimplência","Fluxo de Caixa","Ranking","Performance","Relatório Executivo"], templates:["Registrar entrada de cliente","Emitir cobrança mensal","Conferir pagamento","Atualizar inadimplência","Projetar fluxo de caixa","Renegociar cobrança","Atualizar contrato financeiro"]},
+  {key:"dp", name:"Departamento Pessoal", icon:"👥", color:"#be123c", desc:"Folha, admissões, férias, rescisões, eSocial e encargos.", tabs:["Visão Geral","Clientes","Folha","Admissões","Rescisões","Férias","eSocial","Ranking","Performance","Relatório Executivo"], templates:["Coletar eventos da folha","Processar folha de pagamento","Enviar recibos ao cliente","Transmitir eventos eSocial","Gerar DCTFWeb/encargos","Controlar férias","Processar admissão/rescisão"]},
+  {key:"rh", name:"Recursos Humanos", icon:"🧠", color:"#0891b2", desc:"Pessoas, recrutamento, treinamento, clima e avaliações.", tabs:["Visão Geral","Pessoas","Recrutamento","Treinamento","Clima","Avaliações","Documentos","Ranking","Performance","Relatório Executivo"], templates:["Atualizar cadastro de colaborador","Abrir vaga/recrutamento","Realizar entrevista","Registrar treinamento","Aplicar pesquisa de clima","Concluir avaliação de desempenho","Organizar documentos internos"]},
+  {key:"comercial", name:"Comercial", icon:"🤝", color:"#16a34a", desc:"Leads, propostas, vendas, contratos e receita comercial.", tabs:["Visão Geral","Leads","Propostas","Vendas","Pipeline","Contratos","Follow-up","Ranking","Performance","Relatório Executivo"], templates:["Cadastrar lead","Qualificar oportunidade","Enviar proposta","Fazer follow-up","Fechar venda","Enviar contrato","Registrar valor vendido"]},
+  {key:"marketing", name:"Marketing", icon:"📣", color:"#ea580c", desc:"Funil, campanhas, conteúdos, leads e métricas de aquisição.", tabs:["Visão Geral","Funil","Campanhas","Conteúdos","Métricas","Leads","Calendário","Ranking","Performance","Relatório Executivo"], templates:["Planejar conteúdo","Publicar campanha","Registrar alcance","Registrar leads gerados","Analisar conversão do funil","Enviar lead ao comercial","Atualizar calendário editorial"]},
+  {key:"compliance", name:"Compliance", icon:"🛡️", color:"#334155", desc:"Controles, riscos, políticas, LGPD e conformidade interna.", tabs:["Visão Geral","Controles","Riscos","LGPD","Políticas","Auditorias Internas","Pendências","Ranking","Performance","Relatório Executivo"], templates:["Revisar controle interno","Mapear risco","Atualizar política interna","Verificar conformidade LGPD","Registrar não conformidade","Acompanhar plano de ação","Validar documentação"]},
+  {key:"auditoria", name:"Auditoria", icon:"🔎", color:"#4f46e5", desc:"Planejamento, testes, evidências, achados e recomendações.", tabs:["Visão Geral","Planejamento","Testes","Evidências","Achados","Recomendações","Relatório","Ranking","Performance","Relatório Executivo"], templates:["Planejar auditoria","Solicitar evidências","Executar teste substantivo","Registrar achado","Emitir recomendação","Validar resposta da área","Finalizar relatório de auditoria"]}
+];
+const DEFAULT_CLIENTS = [
+  {name:"Lavanderia Connect", cnpj:"12.345.678/0001-10", plan:"Bronze", responsible:"Colaborador 1", segment:"Serviços", active:true},
+  {name:"Atitude Training Academia", cnpj:"22.333.444/0001-50", plan:"Bronze", responsible:"Colaborador 2", segment:"Academia", active:true},
+  {name:"Elisangela Serviços Digitais", cnpj:"31.222.111/0001-02", plan:"Prata", responsible:"Colaborador 1", segment:"Serviços", active:true},
+  {name:"Clínica Bem Estar", cnpj:"18.555.777/0001-91", plan:"Ouro", responsible:"Assistente", segment:"Saúde", active:true}
+];
+
+let state = loadState();
+let session = loadSession();
+let screen = "home";
+let activeSectorKey = null;
+let activeTab = "Visão Geral";
+let filtersOpen = false;
+let filterState = {competence:MONTHS[0], status:"Todos", responsible:"Todos", client:"Todos", priority:"Todos"};
+
+function uid(prefix="id"){ return prefix + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
+function now(){ return new Date().toLocaleString("pt-BR"); }
+function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function save(){ localStorage.setItem(DB_KEY, JSON.stringify(state)); }
+function saveSession(){ localStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+function loadSession(){ try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch(e){return null} }
+function loadState(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {companies:[], users:[], tasks:[], logs:[], passwordResets:[]};
+}
+function getCompany(){ return state.companies.find(c=>session && c.id===session.companyId); }
+function getUser(){ return state.users.find(u=>session && u.id===session.userId); }
+function isAdmin(){ const u=getUser(); return !!u && (u.role==="admin" || u.role==="owner"); }
+function isOwner(){ const u=getUser(); return !!u && u.role==="owner"; }
+function userName(id){ const u=state.users.find(x=>x.id===id); return u?u.name:"Sistema"; }
+function clientName(id){ const c=getCompany()?.clients.find(x=>x.id===id); return c?c.name:"Sem cliente"; }
+function sectorByKey(key){ const company=getCompany(); return company?.sectors.find(s=>s.key===key) || SECTOR_LIBRARY.find(s=>s.key===key); }
+function canAccessSector(key){ if(isAdmin()) return true; const u=getUser(); return !!u?.permissions?.includes(key); }
+function escapeHtml(str){ return String(str??"").replace(/[&<>'"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;",'"':"&quot;"}[m])); }
+function lang(){ return (activeSectorKey?getSectorPrefs(activeSectorKey).language:null) || "Português"; }
+const I18N={
+  English:{"Painel geral":"General dashboard","Clientes da empresa":"Company clients","Aprovações":"Approvals","Administração":"Administration","Relatórios gerais":"General reports","Relatórios do setor":"Sector reports","Setores":"Sectors","Mês de referência":"Reference month","Filtros":"Filters","Histórico":"History","Personalizar":"Customize","Competência":"Period","Status":"Status","Responsável":"Owner","Cliente":"Client","Prioridade":"Priority","Todos":"All","Visão Geral":"Overview","Clientes":"Clients","Extratos":"Bank statements","Pendências":"Pending items","DRE":"Income statement","Distribuição de Lucros":"Profit distribution","Reuniões":"Meetings","Ranking":"Ranking","Performance":"Performance","Relatório Executivo":"Executive report","Quantidade de dinheiro":"Money amount","Ações":"Actions","Atualizado por":"Updated by","Finalizar":"Finish","Editar":"Edit","Baixar relatório geral":"Download full report","Sair":"Logout"},
+  Español:{"Painel geral":"Panel general","Clientes da empresa":"Clientes de la empresa","Aprovações":"Aprobaciones","Administração":"Administración","Relatórios gerais":"Informes generales","Relatórios do setor":"Informes del sector","Setores":"Sectores","Mês de referência":"Mes de referencia","Filtros":"Filtros","Histórico":"Historial","Personalizar":"Personalizar","Competência":"Competencia","Status":"Estado","Responsável":"Responsable","Cliente":"Cliente","Prioridade":"Prioridad","Todos":"Todos","Visão Geral":"Vista general","Clientes":"Clientes","Extratos":"Extractos","Pendências":"Pendientes","DRE":"Estado de resultados","Distribuição de Lucros":"Distribución de utilidades","Reuniões":"Reuniones","Ranking":"Ranking","Performance":"Desempeño","Relatório Executivo":"Informe ejecutivo","Quantidade de dinheiro":"Cantidad de dinero","Ações":"Acciones","Atualizado por":"Actualizado por","Finalizar":"Finalizar","Editar":"Editar","Baixar relatório geral":"Descargar informe general","Sair":"Salir"}
+};
+function L(txt){ const l=lang(); return I18N[l]?.[txt] || txt; }
+function tabLabel(t){ return L(t); }
+function normalizeStatusForDone(status){ return ["Concluída","Enviada","Enviada ao cliente","DRE FINALIZADA","DRE ENVIADA","Finalizada","Transmitida","Protocolado","Finalizado","Concluído","Emitida","Recebida","Processada","Publicado","Atualizado","Atualizadas","Analisadas","Conforme","Resolvida","Salvo na pasta","Contabilizado","Apurada","Fechada","Assinado","Validada"].includes(status); }
+function hexToRgb(hex){ hex=String(hex||"").replace("#",""); if(hex.length===3) hex=hex.split("").map(x=>x+x).join(""); const n=parseInt(hex,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
+function isDarkColor(hex){ try{const {r,g,b}=hexToRgb(hex); return ((r*299+g*587+b*114)/1000)<145;}catch(e){return false;} }
+function readableTextFor(bg){ return isDarkColor(bg)?"#f8fafc":"#111827"; }
+function readableMutedFor(bg){ return isDarkColor(bg)?"#cbd5e1":"#64748b"; }
+function formatMoney(v){ const n=Number(v)||0; return n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+function parseMoney(v){ if(typeof v==='number') return v; return Number(String(v||"0").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",","."))||0; }
+function setupMoneyInput(id,previewId){ const el=document.getElementById(id); if(!el)return; const update=()=>{ const n=parseMoney(el.value); el.value=formatMoney(n); if(previewId&&document.getElementById(previewId)) document.getElementById(previewId).textContent=formatMoney(n); }; el.onfocus=()=>{ const n=parseMoney(el.value); el.value=n?String(n).replace('.',','):''; }; el.onblur=update; update(); }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2600); }
+function addLog(sectorKey, action, detail){
+  state.logs.unshift({id:uid("log_"), companyId:getCompany()?.id, sectorKey, userId:getUser()?.id, userName:getUser()?.name || "Sistema", action, detail, date:now()});
+  save();
+}
+function statusClass(st){ return normalizeStatusForDone(st)?"ok":st==="Atrasada"||st==="Crítica"?"bad":String(st||"").includes("andamento")||String(st||"").includes("elaboração")||String(st||"").includes("execução")?"info":"warn"; }
+function normalizeKey(name){ return String(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"") || uid("setor_"); }
+function findTemplateSector(key){ return SECTOR_LIBRARY.find(s=>s.key===key); }
+
+function createDemo(){
+  const companyId=uid("comp_");
+  const adminId=uid("usr_");
+  const sectors=deepClone(SECTOR_LIBRARY);
+  const clients=DEFAULT_CLIENTS.map(c=>({...c,id:uid("cli_"), createdAt:now()}));
+  const company={id:companyId,name:"Empresa Demo Premium",email:"admin@empresademo.com.br",password:"123456",createdAt:now(),sectors,clients,requests:[]};
+  const users=[
+    {id:adminId,companyId,name:"Administrador Principal",email:company.email,password:"123456",role:"owner",permissions:sectors.map(s=>s.key),preferences:{}},
+    {id:uid("usr_"),companyId,name:"Colaborador 1",email:"colaborador1@demo.com",password:"123456",role:"user",permissions:["contabil","fiscal","financeiro","comercial"],preferences:{}},
+    {id:uid("usr_"),companyId,name:"Colaborador 2",email:"colaborador2@demo.com",password:"123456",role:"user",permissions:["contabil","dp","constitutivo"],preferences:{}},
+    {id:uid("usr_"),companyId,name:"Assistente",email:"assistente@demo.com",password:"123456",role:"user",permissions:["contabil","marketing"],preferences:{}}
+  ];
+  state={companies:[company],users,tasks:[],logs:[],passwordResets:[]};
+  session={userId:adminId,companyId};
+  save(); saveSession();
+  generateMonthlyTasks(MONTHS[0], true);
+  screen="dashboard";
+  render(); toast("Ambiente demo criado. Senha de todos: 123456");
+}
+
+function render(){
+  const app=document.getElementById("app");
+  if(!session || !getUser() || !getCompany()) { app.innerHTML=renderAuth(); bindAuth(); return; }
+  app.innerHTML=renderApp(); bindApp(); applySectorPreferences();
+}
+
+function renderAuth(){
+  return `
+  <section class="auth-page">
+    <div class="auth-hero">
+      <div class="brand"><div class="brand-mark">CE</div><div><h1>Controle Escritório</h1><p>Controle premium de equipes para escritórios contábeis</p></div></div>
+      <div class="hero-copy">
+        <span class="tag">✨ Protótipo executivo • pronto para banco de dados</span>
+        <h2>Controle cada setor, cada cliente e cada obrigação mensal.</h2>
+        <p>Cadastre a empresa, aprove usuários, libere setores por permissão, acompanhe pendências, DRE, fiscal, DP, comercial, marketing, auditoria e gere relatórios executivos com poucos cliques.</p>
+        <div class="hero-pills"><span>Permissões por setor</span><span>Histórico de alterações</span><span>Relatórios executivos</span><span>Performance mensal</span></div>
+      </div>
+      <div class="notice" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:#e5e7eb;position:relative;z-index:1">Nesta etapa, o envio de e-mail e banco de dados estão simulados. Depois conectamos ao backend real.</div>
+    </div>
+    <div class="auth-card-wrap">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="active" data-auth-tab="login">Entrar</button>
+          <button data-auth-tab="company">Cadastrar empresa</button>
+          <button data-auth-tab="user">Novo usuário</button>
+        </div>
+        <div id="authLogin" class="auth-panel">
+          <div class="form-grid">
+            <div class="field"><label>E-mail do usuário</label><input id="loginEmail" value="admin@empresademo.com.br" placeholder="seuemail@empresa.com.br"></div>
+            <div class="field"><label>Senha</label><input id="loginPass" type="password" value="123456" placeholder="Digite sua senha"></div>
+            <button class="btn gold" id="btnLogin">Entrar na empresa</button>
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="link-btn" id="forgotPass">Esqueci minha senha</button>
+              <button class="btn secondary small" id="demoBtn">Criar ambiente de demonstração</button>
+            </div>
+          </div>
+        </div>
+        <div id="authCompany" class="auth-panel hidden">
+          <div class="form-grid">
+            <div class="field"><label>Nome da empresa</label><input id="companyName" placeholder="Ex: Empresa Demo Premium"></div>
+            <div class="field"><label>E-mail principal da empresa / ADM</label><input id="companyEmail" placeholder="contato@empresa.com.br"></div>
+            <div class="field"><label>Nome do ADM principal</label><input id="companyAdminName" placeholder="Ex: Diretoria"></div>
+            <div class="row"><div class="field"><label>Senha ADM</label><input id="companyPass" type="password" placeholder="Crie uma senha"></div><div class="field"><label>Confirmar senha</label><input id="companyPass2" type="password" placeholder="Repita a senha"></div></div>
+            <button class="btn gold" id="btnCreateCompany">Cadastrar empresa nova</button>
+          </div>
+        </div>
+        <div id="authUser" class="auth-panel hidden">
+          <div class="form-grid">
+            <div class="field"><label>Seu nome</label><input id="reqName" placeholder="Seu nome completo"></div>
+            <div class="field"><label>Seu e-mail</label><input id="reqEmail" placeholder="usuario@email.com"></div>
+            <div class="field"><label>E-mail da empresa</label><input id="reqCompanyEmail" placeholder="empresa@dominio.com"></div>
+            <div class="row"><div class="field"><label>Senha</label><input id="reqPass" type="password"></div><div class="field"><label>Confirmar senha</label><input id="reqPass2" type="password"></div></div>
+            <button class="btn" id="btnRequestAccess">Solicitar acesso</button>
+            <div class="notice warn">O ADM principal receberá a solicitação dentro do painel e escolherá quais setores você poderá acessar.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function bindAuth(){
+  document.querySelectorAll("[data-auth-tab]").forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll("[data-auth-tab]").forEach(b=>b.classList.remove("active")); btn.classList.add("active");
+    ["authLogin","authCompany","authUser"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+    document.getElementById(btn.dataset.authTab==="login"?"authLogin":btn.dataset.authTab==="company"?"authCompany":"authUser").classList.remove("hidden");
+  });
+  document.getElementById("btnLogin").onclick=()=>{
+    const email=document.getElementById("loginEmail").value.trim().toLowerCase();
+    const pass=document.getElementById("loginPass").value;
+    const u=state.users.find(x=>x.email.toLowerCase()===email && x.password===pass && x.status!=="pending");
+    if(!u) return toast("E-mail ou senha inválidos, ou usuário ainda não aprovado.");
+    session={userId:u.id,companyId:u.companyId}; saveSession(); screen="dashboard"; render();
+  };
+  document.getElementById("btnCreateCompany").onclick=()=>{
+    const name=document.getElementById("companyName").value.trim();
+    const email=document.getElementById("companyEmail").value.trim().toLowerCase();
+    const adminName=document.getElementById("companyAdminName").value.trim()||"ADM Principal";
+    const p=document.getElementById("companyPass").value; const p2=document.getElementById("companyPass2").value;
+    if(!name||!email||!p) return toast("Preencha nome, e-mail e senha.");
+    if(p!==p2) return toast("As senhas não conferem.");
+    if(state.companies.some(c=>c.email.toLowerCase()===email)) return toast("Já existe empresa com esse e-mail.");
+    const companyId=uid("comp_"); const userId=uid("usr_");
+    const company={id:companyId,name,email,password:p,createdAt:now(),sectors:deepClone(SECTOR_LIBRARY),clients:[],requests:[]};
+    const user={id:userId,companyId,name:adminName,email,password:p,role:"owner",permissions:company.sectors.map(s=>s.key),preferences:{}};
+    state.companies.push(company); state.users.push(user); session={userId,companyId}; save(); saveSession(); render(); toast("Empresa criada com sucesso.");
+  };
+  document.getElementById("btnRequestAccess").onclick=()=>{
+    const name=document.getElementById("reqName").value.trim(); const email=document.getElementById("reqEmail").value.trim().toLowerCase(); const companyEmail=document.getElementById("reqCompanyEmail").value.trim().toLowerCase(); const pass=document.getElementById("reqPass").value; const pass2=document.getElementById("reqPass2").value;
+    const company=state.companies.find(c=>c.email.toLowerCase()===companyEmail);
+    if(!name||!email||!companyEmail||!pass) return toast("Preencha todos os campos.");
+    if(pass!==pass2) return toast("As senhas não conferem.");
+    if(!company) return toast("Empresa não encontrada.");
+    if(state.users.some(u=>u.email.toLowerCase()===email && u.companyId===company.id)) return toast("Esse e-mail já existe nessa empresa.");
+    company.requests.push({id:uid("req_"),name,email,password:pass,createdAt:now(),status:"pending"}); save(); toast("Solicitação enviada ao ADM principal.");
+  };
+  document.getElementById("forgotPass").onclick=openForgotPassword;
+  document.getElementById("demoBtn").onclick=createDemo;
+}
+
+function renderApp(){
+  const company=getCompany(); const user=getUser();
+  return `<div class="main-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">CE</div><div><h1>Controle Escritório</h1><p>ambiente corporativo de controle</p></div></div>
+      <div class="user-chip"><div class="avatar">${escapeHtml(user.name.slice(0,1).toUpperCase())}</div><div><b>${escapeHtml(user.name)}</b><span>${user.role==="owner"?"ADM Principal":user.role==="admin"?"Administrador":"Usuário de setor"}</span></div></div>
+      <div class="side-section-title">Principal</div>
+      <nav class="side-nav">
+        <button class="${screen==='dashboard'?'active':''}" data-screen="dashboard">🏠 ${L("Painel geral")}</button>
+        ${isAdmin()?`<button class="${screen==='clients'?'active':''}" data-screen="clients">📁 ${L("Clientes da empresa")}</button><button class="${screen==='approvals'?'active':''}" data-screen="approvals">✅ ${L("Aprovações")} ${company.requests.filter(r=>r.status==='pending').length?`<span class="lock">${company.requests.filter(r=>r.status==='pending').length}</span>`:""}</button><button class="${screen==='admin'?'active':''}" data-screen="admin">⚙️ ${L("Administração")}</button>`:""}
+        <button class="${screen==='reports'?'active':''}" data-screen="reports">📑 ${isAdmin()?L("Relatórios gerais"):L("Relatórios do setor")}</button>
+      </nav>
+      <div class="side-section-title">${L("Setores")}</div>
+      <nav class="side-nav">
+        ${company.sectors.map(s=>`<button class="${activeSectorKey===s.key&&screen==='sector'?'active':''}" data-sector="${s.key}">${s.icon} ${escapeHtml(s.name)} ${canAccessSector(s.key)?"<span class='sector-access-on'>on</span>":"<span class='lock'>🔒</span>"}</button>`).join("")}
+      </nav>
+    </aside>
+    <main class="content">
+      <header class="topbar">
+        <div style="display:flex;align-items:center;gap:12px"><button class="btn secondary small hamb" id="hamb">☰</button><div><h2>${topTitle()}</h2><p>${topSubtitle()}</p></div></div>
+        <div class="top-actions"><button class="btn secondary small" id="logout">↪ ${L("Sair")}</button></div>
+      </header>
+      <section class="page">${renderScreen()}</section>
+    </main>
+  </div>`;
+}
+function topTitle(){ if(screen==="sector") return sectorByKey(activeSectorKey)?.name || "Setor"; return {dashboard:L("Painel geral"),clients:L("Clientes da empresa"),approvals:L("Aprovações"),admin:L("Administração"),reports:L("Relatórios gerais")}[screen]||"Controle Escritório"; }
+function topSubtitle(){ if(screen==="sector") return sectorByKey(activeSectorKey)?.desc || "Controle do setor"; return "Controle de equipes, clientes, obrigações e performance mensal"; }
+function renderScreen(){
+  if(screen==="dashboard") return renderDashboard();
+  if(screen==="clients") return renderClientAdmin();
+  if(screen==="approvals") return renderApprovals();
+  if(screen==="admin") return renderAdmin();
+  if(screen==="reports") return renderReportsHub();
+  if(screen==="sector") return renderSector();
+  return renderDashboard();
+}
+function bindApp(){
+  document.querySelectorAll("[data-screen]").forEach(btn=>btn.onclick=()=>{screen=btn.dataset.screen;activeSectorKey=null;render();});
+  document.querySelectorAll("[data-sector]").forEach(btn=>btn.onclick=()=>{ const key=btn.dataset.sector; if(!canAccessSector(key)) return toast("Você não tem permissão para acessar esse setor."); activeSectorKey=key; activeTab="Visão Geral"; screen="sector"; render(); });
+  document.getElementById("logout").onclick=()=>{session=null; localStorage.removeItem(SESSION_KEY); render();};
+  const hamb=document.getElementById("hamb"); if(hamb) hamb.onclick=()=>document.getElementById("sidebar").classList.toggle("open");
+  bindDynamicActions();
+  setTimeout(()=>{const el=document.querySelector('.side-nav button.active[data-sector]'); if(el) el.scrollIntoView({block:'nearest'});},0);
+}
+
+function renderDashboard(){
+  const company=getCompany(); const sectors=company.sectors;
+  const totals=sectorSummaryAll();
+  return `<div class="form-grid">
+    <div class="dashboard-grid">
+      ${kpi("Clientes ativos", company.clients.filter(c=>c.active!==false).length, "Base geral da empresa", "navy", "📁")}
+      ${kpi("Tarefas concluídas", totals.done, "No período selecionado", "green", "✅")}
+      ${kpi("Pendências abertas", totals.pending, "Pendente, em andamento ou atraso", "gold", "⚠️")}
+      ${kpi("Setores ativos", sectors.length, "Com controle operacional", "blue", "🏢")}
+    </div>
+    <div class="two-grid">
+      <div class="lux-card panel">
+        <div class="section-head"><div><h3>Setores da empresa</h3><p>Clique em um setor para abrir as abas e controles específicos.</p></div>${isAdmin()?`<button class="btn secondary small" data-open-add-sector>+ Setor</button>`:""}</div>
+        <div class="sector-grid">${sectors.map(s=>renderSectorCard(s)).join("")}</div>
+      </div>
+      <div class="lux-card panel">
+        <div class="section-head"><div><h3>Resumo executivo</h3><p>Visão limpa, sem excesso de filtros na abertura.</p></div><button class="btn small" data-screen-jump="reports">Gerar relatório</button></div>
+        ${renderMonthlyBars()}
+        <div class="divider"></div>
+        <div class="metric-list">
+          <div class="metric-item"><span>Melhor setor no mês</span><b>${bestSectorName()}</b></div>
+          <div class="metric-item"><span>Solicitações pendentes</span><b>${company.requests.filter(r=>r.status==='pending').length}</b></div>
+          <div class="metric-item"><span>Média geral de conclusão</span><b>${completionRate(null)}%</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="app-footer-note"><b>Preparado para banco de dados:</b> a estrutura já separa empresas, usuários, setores, clientes, tarefas, permissões e histórico. Depois a gente troca o localStorage por tabelas reais e autenticação com envio de e-mail.</div>
+  </div>`;
+}
+function renderSectorCard(s){
+  const sum=sectorSummary(s.key); const locked=!canAccessSector(s.key);
+  return `<button class="sector-card" data-sector="${s.key}" style="border-top:4px solid ${s.color}">
+    <div class="sector-icon">${s.icon}</div><h4>${escapeHtml(s.name)}</h4><p>${escapeHtml(s.desc)}</p>
+    <span class="status-pill ${locked?'bad':sum.pending>0?'warn':'ok'}">${locked?'Sem acesso':sum.done+' concluídas • '+sum.pending+' pendentes'}</span>
+  </button>`;
+}
+function kpi(label,value,sub,kind,icon){ return `<div class="kpi ${kind}"><div class="icon">${icon}</div><label>${label}</label><strong>${value}</strong><small>${sub}</small></div>`; }
+function sectorSummaryAll(){ return state.tasks.filter(t=>t.companyId===getCompany().id).reduce((a,t)=>{ if(normalizeStatusForDone(t.status)) a.done++; else a.pending++; return a; },{done:0,pending:0}); }
+function sectorSummary(key){ return state.tasks.filter(t=>t.companyId===getCompany().id && t.sectorKey===key && t.competence===filterState.competence).reduce((a,t)=>{ if(normalizeStatusForDone(t.status)) a.done++; else a.pending++; a.total++; return a; },{done:0,pending:0,total:0}); }
+function completionRate(key){ const list=state.tasks.filter(t=>t.companyId===getCompany().id && (!key||t.sectorKey===key) && t.competence===filterState.competence); if(!list.length)return 0; return Math.round(list.filter(t=>normalizeStatusForDone(t.status)).length/list.length*100); }
+function bestSectorName(){ const company=getCompany(); let best={name:"-",rate:-1}; company.sectors.forEach(s=>{const r=completionRate(s.key); if(r>best.rate){best={name:s.name,rate:r}}}); return best.name; }
+function renderMonthlyBars(){
+  const data=MONTHS.slice(0,6).map(m=>({m,done:state.tasks.filter(t=>t.companyId===getCompany().id&&t.competence===m&&normalizeStatusForDone(t.status)).length}));
+  const max=Math.max(1,...data.map(d=>d.done));
+  return `<div class="bar-chart">${data.map(d=>`<div class="bar-row"><span>${d.m}</span><div class="bar-bg"><i style="width:${Math.round(d.done/max*100)}%"></i></div><b>${d.done}</b></div>`).join("")}</div>`;
+}
+
+function renderClientAdmin(){
+  const company=getCompany();
+  return `<div class="client-admin-grid">
+    <div class="lux-card panel">
+      <div class="section-head"><div><h3>Cadastrar cliente mestre</h3><p>O ADM cadastra uma vez e o cliente aparece em todos os setores.</p></div></div>
+      <div class="form-grid">
+        <div class="field"><label>Nome do cliente</label><input id="cliName" placeholder="Nome fantasia ou razão social"></div>
+        <div class="row"><div class="field"><label>CNPJ/CPF</label><input id="cliCnpj" placeholder="00.000.000/0001-00"></div><div class="field"><label>Plano</label><select id="cliPlan"><option>Bronze</option><option>Prata</option><option>Ouro</option><option>Premium</option></select></div></div>
+        <div class="row"><div class="field"><label>Responsável padrão</label><input id="cliResponsible" placeholder="Colaborador responsável"></div><div class="field"><label>Segmento</label><input id="cliSegment" placeholder="Ex: Saúde, comércio, serviço"></div></div>
+        <button class="btn gold" id="addClient">Adicionar cliente</button>
+        <button class="btn secondary" id="generateMonth">Gerar tarefas do mês para todos os setores</button>
+        <div class="notice">Ao gerar as tarefas mensais, cada setor recebe pendências automáticas conforme sua rotina. Ex: no Contábil, DRE e extratos; no Fiscal, notas e apurações; no DP, folha e eSocial.</div>
+      </div>
+    </div>
+    <div class="lux-card panel">
+      <div class="section-head"><div><h3>Clientes cadastrados</h3><p>${company.clients.length} cliente(s) na base geral.</p></div><button class="btn secondary small" data-export-clients>Exportar CSV</button></div>
+      ${renderClientsTable(company.clients,true)}
+    </div>
+  </div>`;
+}
+function renderClientsTable(clients, admin=false){
+  if(!clients.length) return `<div class="empty"><b>Nenhum cliente cadastrado</b>Cadastre clientes para que os setores recebam as pendências mensais.</div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Plano</th><th>Responsável</th><th>Segmento</th><th>Status</th>${admin?"<th>Ações</th>":""}</tr></thead><tbody>${clients.map(c=>`<tr><td class="client-cell"><b>${escapeHtml(c.name)}</b><span>${escapeHtml(c.cnpj||"")}</span></td><td><span class="status-pill gold">${escapeHtml(c.plan||"-")}</span></td><td>${escapeHtml(c.responsible||"-")}</td><td>${escapeHtml(c.segment||"-")}</td><td><span class="status-pill ${c.active!==false?'ok':'bad'}">${c.active!==false?'Ativo':'Inativo'}</span></td>${admin?`<td><button class="btn secondary small" data-toggle-client="${c.id}">${c.active!==false?'Inativar':'Ativar'}</button> <button class="btn danger small" data-del-client="${c.id}">Excluir</button></td>`:""}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function renderApprovals(){
+  const company=getCompany(); const pending=company.requests.filter(r=>r.status==="pending");
+  return `<div class="lux-card panel">
+    <div class="section-head"><div><h3>Solicitações de acesso</h3><p>O ADM aprova o usuário e escolhe os setores liberados.</p></div></div>
+    ${pending.length?pending.map(r=>`<div class="request-card"><div><h4>${escapeHtml(r.name)}</h4><p>${escapeHtml(r.email)} • solicitado em ${r.createdAt}</p><div class="check-grid" style="margin-top:12px">${getCompany().sectors.map(s=>`<label class="check-tile"><input type="checkbox" data-perm="${r.id}" value="${s.key}"> ${s.icon} ${escapeHtml(s.name)}</label>`).join("")}</div></div><div style="display:grid;gap:8px;align-content:start"><button class="btn success small" data-approve="${r.id}">Aprovar</button><button class="btn danger small" data-reject="${r.id}">Recusar</button></div></div>`).join("<br>"):`<div class="empty"><b>Nenhuma solicitação pendente</b>Quando um novo usuário se cadastrar, ele aparecerá aqui.</div>`}
+  </div>`;
+}
+
+function renderAdmin(){
+  const company=getCompany();
+  return `<div class="form-grid">
+    <div class="two-grid">
+      <div class="lux-card panel">
+        <div class="section-head"><div><h3>Usuários e permissões</h3><p>O ADM principal pode liberar setores, transformar usuários em ADM e também promover outro usuário aprovado para ADM Principal.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Cargo</th><th>Setores</th><th>Ações</th></tr></thead><tbody>${state.users.filter(u=>u.companyId===company.id).map(u=>`<tr><td class="client-cell"><b>${escapeHtml(u.name)}</b><span>${escapeHtml(u.email)}</span></td><td><span class="status-pill ${u.role==='owner'?'gold':u.role==='admin'?'ok':'info'}">${u.role==='owner'?'ADM Principal':u.role==='admin'?'ADM':'Usuário'}</span></td><td>${u.permissions?.length||0} setor(es)</td><td>${u.id===getUser().id?"Usuário atual":`<button class="btn secondary small" data-edit-user="${u.id}">Permissões</button> ${isOwner()&&u.role!=='admin'?`<button class="btn gold small" data-make-admin="${u.id}">Tornar ADM</button>`:""} ${isOwner()&&u.role!=='owner'?`<button class="btn success small" data-make-owner="${u.id}">Tornar ADM Principal</button>`:""}`}</td></tr>`).join("")}</tbody></table></div>
+      </div>
+      <div class="lux-card panel">
+        <div class="section-head"><div><h3>Setores</h3><p>Somente ADM pode adicionar ou excluir setores.</p></div><button class="btn gold small" data-open-add-sector>Adicionar setor</button></div>
+        <div class="metric-list">${company.sectors.map(s=>`<div class="metric-item"><span>${s.icon} ${escapeHtml(s.name)}</span><b>${sectorSummary(s.key).total}</b>${isAdmin()?`<button class="btn danger small" data-remove-sector="${s.key}">Excluir</button>`:""}</div>`).join("")}</div>
+      </div>
+    </div>
+    <div class="lux-card panel">
+      <div class="section-head"><div><h3>Histórico geral da empresa</h3><p>Últimas alterações registradas por usuário.</p></div></div>
+      ${renderHistoryList(state.logs.filter(l=>l.companyId===company.id).slice(0,30))}
+    </div>
+  </div>`;
+}
+
+function renderReportsHub(){
+  const company=getCompany();
+  const allowedSectors=company.sectors.filter(s=>canAccessSector(s.key));
+  return `<div class="lux-card panel">
+    <div class="section-head"><div><h3>Central de relatórios</h3><p>${isAdmin()?"ADM pode baixar o relatório completo de todos os setores.":"Usuário pode baixar relatórios dos setores liberados."}</p></div><div class="toolbar-right"><select id="reportPeriod"><option>Mensal</option><option>Trimestral</option><option>Anual</option><option>Personalizado</option></select><select id="reportMonth">${MONTHS.map(m=>`<option>${m}</option>`).join("")}</select>${isAdmin()?`<button class="btn gold" data-download-all>Baixar relatório geral</button>`:""}</div></div>
+    <div class="sector-grid">${allowedSectors.map(s=>`<button class="sector-card" data-download-sector-report="${s.key}" style="border-top:4px solid ${s.color}"><div class="sector-icon">${s.icon}</div><h4>${escapeHtml(s.name)}</h4><p>Relatório executivo com KPIs, gráficos, ranking, pendências e comparações.</p><span class="status-pill info">Baixar relatório</span></button>`).join("")}</div>
+  </div>`;
+}
+
+function renderSector(){
+  const sector=sectorByKey(activeSectorKey); if(!sector) return "";
+  const prefs=getSectorPrefs(activeSectorKey); const tabs=sector.tabs;
+  return `<div class="form-grid sector-page" data-sector-page="${activeSectorKey}">
+    <div class="lux-card panel" style="border-top:4px solid ${prefs.accent||sector.color}">
+      <div class="section-head"><div><h3>${sector.icon} ${escapeHtml(sector.name)}</h3><p>${escapeHtml(sector.desc)}</p></div><div class="toolbar-right"><span class="ref-chip">📅 ${L("Mês de referência")}: ${filterState.competence}</span><button class="btn secondary small" data-open-filters>🔎 ${L("Filtros")}</button><button class="btn secondary small" data-open-history>⋯ ${L("Histórico")}</button><button class="btn secondary small" data-open-sector-settings>⚙️ ${L("Personalizar")}</button></div></div>
+      <div class="filter-box ${filtersOpen?'open':''}" id="filterBox">
+        <div class="filter-grid">
+          <div class="field"><label>${L("Competência")}</label><select id="fCompetence">${MONTHS.map(m=>`<option ${filterState.competence===m?'selected':''}>${m}</option>`).join("")}</select></div>
+          <div class="field"><label>${L("Status")}</label><select id="fStatus"><option value="Todos">${L("Todos")}</option>${STATUS.map(s=>`<option ${filterState.status===s?'selected':''}>${s}</option>`).join("")}</select></div>
+          <div class="field"><label>${L("Responsável")}</label><select id="fResp"><option value="Todos">${L("Todos")}</option>${teamOptions().map(n=>`<option ${filterState.responsible===n?'selected':''}>${escapeHtml(n)}</option>`).join("")}</select></div>
+          <div class="field"><label>${L("Cliente")}</label><select id="fClient"><option value="Todos">${L("Todos")}</option>${getCompany().clients.map(c=>`<option value="${c.id}" ${filterState.client===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join("")}</select></div>
+          <div class="field"><label>${L("Prioridade")}</label><select id="fPriority"><option value="Todos">${L("Todos")}</option>${PRIORITIES.map(p=>`<option ${filterState.priority===p?'selected':''}>${p}</option>`).join("")}</select></div>
+        </div>
+      </div>
+    </div>
+    <div class="dashboard-grid">${renderSectorKPIs(activeSectorKey)}</div>
+    <div class="tabs-wrap">${tabs.map(t=>`<button class="tab-btn ${activeTab===t?'active':''}" data-tab="${t}">${tabIcon(t)} ${escapeHtml(tabLabel(t))}</button>`).join("")}</div>
+    ${renderTabContent(sector, activeTab)}
+  </div>`;
+}
+function tabIcon(t){ if(t.includes("Visão"))return"▦"; if(t.includes("Cliente"))return"👥"; if(t.includes("Ranking"))return"🏆"; if(t.includes("Performance"))return"📈"; if(t.includes("Relatório"))return"📑"; if(t.includes("Pend"))return"⚠️"; if(t.includes("DRE"))return"↗"; if(t.includes("Reuni"))return"📅"; return"•"; }
+function renderSectorKPIs(key){
+  const base = primaryCounts(key); const list=filteredTasks(key); const late=list.filter(t=>t.status==="Atrasada").length; const clients=new Set(list.map(t=>t.clientId)).size;
+  if(key==="contabil"){
+    return `${kpi("DRE INICIADA", base.pending, `Competência ${filterState.competence}`, "navy", "📌")}${kpi("DRE FINALIZADA", base.finalized, "Fechada internamente", "teal", "🧩")}${kpi("DRE ENVIADA", base.delivered, "Entregue ao cliente", "green", "✅")}${kpi("Clientes movimentados", clients, "Com tarefas neste setor", "blue", "👥")}${kpi("Taxa das DREs", base.rate+"%", `${late} atraso(s) crítico(s) no setor`, "gold", "📈")}`;
+  }
+  return `${kpi(base.label+" pendentes", base.pending, `Competência ${filterState.competence}`, "navy", "📌")}${kpi(base.label+" finalizadas", base.finalized, "Etapa interna concluída", "teal", "🧩")}${kpi(base.label+" entregues", base.delivered, "Entregas ao cliente / etapa final", "green", "✅")}${kpi("Clientes movimentados", clients, "Com tarefas neste setor", "blue", "👥")}${kpi("Taxa da atividade principal", base.rate+"%", `${late} atraso(s) crítico(s) no setor`, "gold", "📈")}`;
+}
+function filteredTasks(key){
+  return state.tasks.filter(t=>t.companyId===getCompany().id && t.sectorKey===key && t.competence===filterState.competence)
+    .filter(t=>filterState.status==="Todos"||t.status===filterState.status)
+    .filter(t=>filterState.responsible==="Todos"||t.responsible===filterState.responsible)
+    .filter(t=>filterState.client==="Todos"||t.clientId===filterState.client)
+    .filter(t=>filterState.priority==="Todos"||t.priority===filterState.priority);
+}
+function tabTasks(key, tab){
+  const list=filteredTasks(key);
+  if(tab==="Visão Geral"||tab==="Performance"||tab==="Ranking"||tab==="Relatório Executivo") return list;
+  if(tab==="Clientes") return list;
+  return list.filter(t=>t.tab===tab || t.title.toLowerCase().includes(tab.toLowerCase().split("/")[0].toLowerCase()) || relatedTab(t.title,tab));
+}
+function relatedTab(title,tab){ const a=(title||"").toLowerCase(), b=tab.toLowerCase(); return b.includes("pend")&&a.includes("pend") || b.includes("extrato")&&a.includes("extrato") || b.includes("dre")&&a.includes("dre") || b.includes("folha")&&a.includes("folha") || b.includes("notas")&&a.includes("nota") || b.includes("vendas")&&a.includes("venda") || b.includes("reinf")&&a.includes("reinf"); }
+function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
+function workflowFactory(titleOptions,statusOptions,terminal,mainLabel){ return {titleOptions:uniq(titleOptions),statusOptions:uniq(statusOptions),terminal:uniq(terminal),mainLabel:mainLabel||"entrega"}; }
+function getWorkflowConfig(sectorKey, tab){
+  const defaults = {
+    generic: workflowFactory([`Atividade de ${tab}`],["Pendente","Em andamento","Concluída"],["Concluída"],tab),
+    contabil: {
+      "Extratos": workflowFactory(["Extrato pendente","Extrato recebido","Salvar extrato na pasta"],["Pendente","Recebido","Salvo na pasta","Contabilizado"],["Salvo na pasta","Contabilizado"],"extrato"),
+      "Pendências": workflowFactory(["Pendente de documento","Pendência de cliente","Ajuste de lançamento"],["Pendente","Aguardando cliente","Resolvida"],["Resolvida"],"pendência"),
+      "DRE": workflowFactory(["DRE INICIADA","DRE FINALIZADA","DRE ENVIADA"],["Pendente","DRE INICIADA","DRE FINALIZADA","DRE ENVIADA"],["DRE FINALIZADA","DRE ENVIADA"],"DRE"),
+      "Distribuição de Lucros": workflowFactory(["Apurar lucro distribuível","Registrar distribuição de lucros","Enviar memória ao cliente"],["Pendente","Apurada","Enviada ao cliente"],["Apurada","Enviada ao cliente"],"distribuição"),
+      "Reuniões": workflowFactory(["Agendar reunião","Realizar reunião","Enviar ata da reunião"],["Pendente","Realizada","Enviada"],["Realizada","Enviada"],"reunião")
+    },
+    fiscal: {
+      "Notas Fiscais": workflowFactory(["Importar notas fiscais","Conferir notas fiscais","Corrigir nota fiscal"],["Pendente","Importada","Conferida","Corrigida"],["Conferida","Corrigida"],"nota fiscal"),
+      "Apuração": workflowFactory(["Apurar tributos","Revisar apuração","Fechar apuração"],["Pendente","Em apuração","Apurada"],["Apurada"],"apuração"),
+      "Obrigações": workflowFactory(["Gerar obrigação mensal","Transmitir declaração","Enviar guia ao cliente"],["Pendente","Apurada","Transmitida","Enviada ao cliente"],["Transmitida","Enviada ao cliente"],"obrigação fiscal"),
+      "Reinf/DCTFWeb": workflowFactory(["Conferir retenções","Transmitir Reinf","Conferir DCTFWeb"],["Pendente","Conferida","Transmitida"],["Transmitida"],"declaração")
+    },
+    constitutivo: {
+      "Aberturas": workflowFactory(["Analisar viabilidade","Emitir DBE","Acompanhar abertura"],["Pendente","Protocolado","Finalizado"],["Finalizado"],"processo de abertura"),
+      "Alterações": workflowFactory(["Preparar alteração contratual","Protocolar alteração","Finalizar alteração"],["Pendente","Protocolado","Finalizado"],["Finalizado"],"alteração"),
+      "Baixas": workflowFactory(["Preparar baixa","Protocolar baixa","Finalizar baixa"],["Pendente","Protocolado","Finalizado"],["Finalizado"],"baixa"),
+      "Certidões": workflowFactory(["Solicitar certidão","Emitir certidão"],["Pendente","Emitida"],["Emitida"],"certidão"),
+      "Junta/Receita": workflowFactory(["Acompanhar exigência","Responder exigência","Concluir processo"],["Pendente","Em análise","Concluído"],["Concluído"],"processo")
+    },
+    financeiro: {
+      "Entradas": workflowFactory(["Registrar entrada de cliente","Atualizar receita do período"],["Pendente","Registrada"],["Registrada"],"entrada"),
+      "Cobranças": workflowFactory(["Emitir cobrança","Enviar cobrança","Cobrança recebida"],["Pendente","Emitida","Enviada","Recebida"],["Recebida"],"cobrança"),
+      "Contas a Receber": workflowFactory(["Conferir contas a receber","Baixar recebimento"],["Pendente","Em conferência","Baixado"],["Baixado"],"recebimento"),
+      "Inadimplência": workflowFactory(["Cobrar cliente inadimplente","Renegociar débito"],["Pendente","Em negociação","Resolvida"],["Resolvida"],"inadimplência"),
+      "Fluxo de Caixa": workflowFactory(["Projetar fluxo de caixa","Atualizar projeção"],["Pendente","Atualizado"],["Atualizado"],"fluxo")
+    },
+    dp: {
+      "Folha": workflowFactory(["Coletar eventos da folha","Processar folha","Enviar folha ao cliente"],["Pendente","Processada","Enviada ao cliente"],["Processada","Enviada ao cliente"],"folha"),
+      "Admissões": workflowFactory(["Receber dados de admissão","Cadastrar admissão","Enviar recibos de admissão"],["Pendente","Cadastrada","Enviada"],["Cadastrada","Enviada"],"admissão"),
+      "Rescisões": workflowFactory(["Receber pedido de rescisão","Processar rescisão","Enviar documentação"],["Pendente","Processada","Enviada"],["Processada","Enviada"],"rescisão"),
+      "Férias": workflowFactory(["Programar férias","Processar férias","Enviar recibo de férias"],["Pendente","Processada","Enviada"],["Processada","Enviada"],"férias"),
+      "eSocial": workflowFactory(["Transmitir evento no eSocial","Conferir retorno do eSocial"],["Pendente","Transmitido","Conferido"],["Transmitido","Conferido"],"evento")
+    },
+    rh: {
+      "Pessoas": workflowFactory(["Atualizar cadastro de colaborador","Organizar documento interno"],["Pendente","Atualizado"],["Atualizado"],"cadastro"),
+      "Recrutamento": workflowFactory(["Abrir vaga","Triar currículo","Realizar entrevista"],["Pendente","Em andamento","Concluído"],["Concluído"],"recrutamento"),
+      "Treinamento": workflowFactory(["Cadastrar treinamento","Executar treinamento","Concluir treinamento"],["Pendente","Em execução","Concluído"],["Concluído"],"treinamento"),
+      "Clima": workflowFactory(["Aplicar pesquisa de clima","Consolidar resultados"],["Pendente","Aplicada","Consolidada"],["Consolidada"],"pesquisa"),
+      "Avaliações": workflowFactory(["Abrir avaliação","Concluir avaliação"],["Pendente","Concluída"],["Concluída"],"avaliação")
+    },
+    comercial: {
+      "Leads": workflowFactory(["Cadastrar lead","Qualificar lead"],["Pendente","Qualificado"],["Qualificado"],"lead"),
+      "Propostas": workflowFactory(["Montar proposta","Enviar proposta"],["Pendente","Enviada"],["Enviada"],"proposta"),
+      "Vendas": workflowFactory(["Abrir negociação","Fechar venda","Registrar valor vendido"],["Pendente","Em negociação","Fechada"],["Fechada"],"venda"),
+      "Pipeline": workflowFactory(["Atualizar oportunidade no pipeline"],["Pendente","Atualizada"],["Atualizada"],"oportunidade"),
+      "Contratos": workflowFactory(["Enviar contrato","Receber contrato assinado"],["Pendente","Enviado","Assinado"],["Assinado"],"contrato"),
+      "Follow-up": workflowFactory(["Realizar follow-up","Registrar retorno do cliente"],["Pendente","Realizado"],["Realizado"],"follow-up")
+    },
+    marketing: {
+      "Funil": workflowFactory(["Atualizar etapa do funil","Analisar conversão do funil"],["Pendente","Atualizado","Concluído"],["Concluído"],"movimento do funil"),
+      "Campanhas": workflowFactory(["Planejar campanha","Publicar campanha","Concluir campanha"],["Pendente","Em execução","Concluída"],["Concluída"],"campanha"),
+      "Conteúdos": workflowFactory(["Planejar conteúdo","Publicar conteúdo"],["Pendente","Publicado"],["Publicado"],"conteúdo"),
+      "Métricas": workflowFactory(["Atualizar métricas","Analisar indicadores"],["Pendente","Atualizadas","Analisadas"],["Atualizadas","Analisadas"],"métrica"),
+      "Leads": workflowFactory(["Registrar lead gerado","Enviar lead ao comercial"],["Pendente","Registrado","Enviado"],["Enviado"],"lead")
+    },
+    compliance: {
+      "Controles": workflowFactory(["Revisar controle interno","Validar controle"],["Pendente","Em revisão","Conforme"],["Conforme"],"controle"),
+      "Riscos": workflowFactory(["Mapear risco","Avaliar risco"],["Pendente","Em análise","Concluído"],["Concluído"],"risco"),
+      "LGPD": workflowFactory(["Verificar conformidade LGPD","Atualizar registro LGPD"],["Pendente","Em revisão","Conforme"],["Conforme"],"rotina LGPD"),
+      "Políticas": workflowFactory(["Atualizar política interna","Publicar política"],["Pendente","Atualizada","Publicada"],["Atualizada","Publicada"],"política"),
+      "Auditorias Internas": workflowFactory(["Abrir auditoria interna","Acompanhar plano de ação"],["Pendente","Em andamento","Concluída"],["Concluída"],"auditoria interna"),
+      "Pendências": workflowFactory(["Registrar não conformidade","Fechar pendência"],["Pendente","Em tratamento","Resolvida"],["Resolvida"],"pendência")
+    },
+    auditoria: {
+      "Planejamento": workflowFactory(["Planejar auditoria","Definir escopo"],["Pendente","Em planejamento","Concluído"],["Concluído"],"planejamento"),
+      "Testes": workflowFactory(["Executar teste substantivo","Executar teste de controle"],["Pendente","Em execução","Concluído"],["Concluído"],"teste"),
+      "Evidências": workflowFactory(["Solicitar evidências","Validar evidências"],["Pendente","Recebida","Validada"],["Validada"],"evidência"),
+      "Achados": workflowFactory(["Registrar achado","Revisar achado"],["Pendente","Em revisão","Concluído"],["Concluído"],"achado"),
+      "Recomendações": workflowFactory(["Emitir recomendação","Validar resposta da área"],["Pendente","Emitida","Validada"],["Emitida","Validada"],"recomendação"),
+      "Relatório": workflowFactory(["Preparar relatório de auditoria","Emitir relatório de auditoria"],["Pendente","Em elaboração","Emitido"],["Emitido"],"relatório")
+    }
+  };
+  const sectorMap = defaults[sectorKey] || {};
+  return sectorMap[tab] || defaults.generic;
+}
+function getPrimaryMetricConfig(sectorKey){
+  const map = {
+    gestao:{tab:"Metas",label:"Metas executivas",pending:["Pendente"],finalized:["Em andamento"],delivered:["Concluída"]},
+    contabil:{tab:"DRE",label:"DREs",pending:["Pendente","DRE INICIADA"],finalized:["DRE FINALIZADA"],delivered:["DRE ENVIADA"]},
+    fiscal:{tab:"Obrigações",label:"Obrigações fiscais",pending:["Pendente"],finalized:["Apurada"],delivered:["Transmitida","Enviada ao cliente"]},
+    constitutivo:{tab:"Junta/Receita",label:"Processos societários",pending:["Pendente"],finalized:["Protocolado"],delivered:["Concluído","Finalizado"]},
+    financeiro:{tab:"Cobranças",label:"Cobranças",pending:["Pendente"],finalized:["Emitida","Enviada"],delivered:["Recebida"]},
+    dp:{tab:"Folha",label:"Folhas",pending:["Pendente"],finalized:["Processada"],delivered:["Enviada ao cliente"]},
+    rh:{tab:"Recrutamento",label:"Recrutamentos",pending:["Pendente"],finalized:["Em andamento"],delivered:["Concluído"]},
+    comercial:{tab:"Vendas",label:"Vendas",pending:["Pendente"],finalized:["Em negociação"],delivered:["Fechada"]},
+    marketing:{tab:"Campanhas",label:"Campanhas",pending:["Pendente"],finalized:["Em execução"],delivered:["Concluída"]},
+    compliance:{tab:"Controles",label:"Controles",pending:["Pendente"],finalized:["Em revisão"],delivered:["Conforme"]},
+    auditoria:{tab:"Relatório",label:"Relatórios de auditoria",pending:["Pendente"],finalized:["Em elaboração"],delivered:["Emitido"]}
+  };
+  return map[sectorKey] || {tab:"Pendências",label:"Entregas",pending:["Pendente"],finalized:["Em andamento"],delivered:["Concluída"]};
+}
+function tabTasksOpen(key, tab){
+  if(String(tab).toLowerCase().includes("pend")){
+    return filteredTasks(key).filter(t=>!normalizeStatusForDone(t.status) && t.status!=="Cancelada");
+  }
+  const cfg = getWorkflowConfig(key, tab); 
+  return tabTasks(key,tab).filter(t=>!cfg.terminal.includes(t.status) && !normalizeStatusForDone(t.status) && t.status!=="Cancelada");
+}
+function markTaskAsDone(task){
+  const cfg = getWorkflowConfig(task.sectorKey, task.tab);
+  task.status = cfg.terminal[cfg.terminal.length-1] || "Concluída";
+  task.updatedBy = getUser().id;
+  task.updatedAt = now();
+}
+function primaryCounts(key){
+  const cfg = getPrimaryMetricConfig(key);
+  const list = filteredTasks(key).filter(t=>t.tab===cfg.tab || relatedTab(t.title,cfg.tab));
+  const pending = list.filter(t=>cfg.pending.includes(t.status)).length;
+  const finalized = list.filter(t=>cfg.finalized.includes(t.status)).length;
+  const delivered = list.filter(t=>cfg.delivered.includes(t.status)).length;
+  const total = list.length;
+  const rate = total?Math.round((finalized+delivered)/total*100):0;
+  return {...cfg,pending,finalized,delivered,total,rate};
+}
+function populateSelectOptions(selectId, options, selectedValue){
+  const el = document.getElementById(selectId); if(!el) return;
+  const list = uniq([selectedValue, ...options]);
+  el.innerHTML = list.map(opt=>`<option ${String(selectedValue||"")===String(opt)?"selected":""}>${escapeHtml(opt)}</option>`).join("");
+}
+function filterTaskClientOptions(){
+  const search = (document.getElementById("taskClientSearch")?.value || "").toLowerCase();
+  const selected = document.getElementById("taskClient")?.value || "";
+  const opts = getCompany().clients.filter(c=>c.active!==false).filter(c=>!search || c.name.toLowerCase().includes(search) || String(c.cnpj||"").toLowerCase().includes(search));
+  const select = document.getElementById("taskClient"); if(!select) return;
+  select.innerHTML = opts.map(c=>`<option value="${c.id}" ${selected===c.id?"selected":""}>${escapeHtml(c.name)}</option>`).join("");
+  if(!select.value && opts[0]) select.value = opts[0].id;
+}
+function syncTaskWorkflow(edit){
+  const tab = document.getElementById("taskTab")?.value || activeTab;
+  const cfg = getWorkflowConfig(activeSectorKey, tab);
+  populateSelectOptions("taskTitle", cfg.titleOptions, edit?.title || cfg.titleOptions[0]);
+  populateSelectOptions("taskStatus", cfg.statusOptions, edit?.status || cfg.statusOptions[0]);
+  const note = document.getElementById("taskFlowNote");
+  if(note) note.innerHTML = `<b>Fluxo da aba ${escapeHtml(tab)}:</b> ao finalizar, a tarefa será marcada como <b>${escapeHtml(cfg.terminal[cfg.terminal.length-1] || "Concluída")}</b> e sairá da lista operacional desta aba.`;
+}
+function renderTabContent(sector, tab){
+  if(tab==="Visão Geral") return renderSectorOverview(sector);
+  if(tab==="Clientes") return renderSectorClients(sector);
+  if(tab==="Ranking") return renderRanking(sector.key);
+  if(tab==="Performance") return renderPerformance(sector.key);
+  if(tab==="Relatório Executivo") return renderSectorReport(sector.key);
+  if(sector.key==="contabil" && tab==="Distribuição de Lucros") return renderProfitDistributionTab(sector);
+  return renderOperationalTab(sector, tab);
+}
+function renderSectorOverview(sector){
+  const key=sector.key; const rate=completionRate(key); const tasks=filteredTasks(key).slice(0,10); const pending=filteredTasks(key).filter(t=>t.status!=="Concluída"&&t.status!=="Enviada");
+  return `<div class="two-grid">
+    <div class="lux-card panel">
+      <div class="section-head"><div><h3>Visão geral do setor</h3><p>Resumo da competência ${filterState.competence}.</p></div><div class="toolbar-right"><button class="btn gold small" data-new-task>+ Nova tarefa</button><button class="btn secondary small" data-generate-sector-month>Gerar pendências</button></div></div>
+      <div class="mini-grid"><div class="chart-card"><div class="donut" style="--p:${rate}"><span>${rate}%</span></div><p class="muted" style="text-align:center">Taxa de conclusão</p></div><div class="chart-card">${renderStatusBars(key)}</div><div class="chart-card"><h4>Alertas</h4><div class="metric-list"><div class="metric-item"><span>Pendências críticas</span><b>${pending.filter(t=>t.priority==='Crítica'||t.status==='Atrasada').length}</b></div><div class="metric-item"><span>Tempo médio</span><b>${avgTime(filteredTasks(key))}h</b></div><div class="metric-item"><span>Clientes ativos</span><b>${getCompany().clients.filter(c=>c.active!==false).length}</b></div></div></div></div>
+    </div>
+    <div class="lux-card panel">
+      <div class="section-head"><div><h3>Próximas tarefas</h3><p>Principais movimentos do setor.</p></div></div>
+      ${renderTasksTable(tasks,false)}
+    </div>
+  </div>`;
+}
+function renderStatusBars(key){ const list=filteredTasks(key); const groups=STATUS.map(s=>({s,n:list.filter(t=>t.status===s).length})); const max=Math.max(1,...groups.map(g=>g.n)); return `<h4 style="margin-top:0">Status</h4><div class="bar-chart">${groups.map(g=>`<div class="bar-row"><span>${g.s}</span><div class="bar-bg"><i style="width:${Math.round(g.n/max*100)}%"></i></div><b>${g.n}</b></div>`).join("")}</div>`; }
+function avgTime(list){ if(!list.length)return 0; return (list.reduce((a,t)=>a+(Number(t.avgHours)||0),0)/list.length).toFixed(1); }
+function renderSectorClients(sector){
+  const clients=getCompany().clients.filter(c=>c.active!==false);
+  return `<div class="lux-card panel"><div class="section-head"><div><h3>Clientes no setor</h3><p>Todos os clientes cadastrados pelo ADM aparecem aqui. Cada setor acompanha seu avanço.</p></div><button class="btn secondary small" data-export-sector>Exportar CSV</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Plano</th><th>Responsável</th><th>Progresso no setor</th><th>Pendências</th><th>Ação rápida</th></tr></thead><tbody>${clients.map(c=>{const list=filteredTasks(sector.key).filter(t=>t.clientId===c.id); const done=list.filter(t=>normalizeStatusForDone(t.status)).length; const rate=list.length?Math.round(done/list.length*100):0; const pend=list.length-done; return `<tr><td class="client-cell"><b>${escapeHtml(c.name)}</b><span>${escapeHtml(c.cnpj||"")}</span></td><td><span class="status-pill gold">${escapeHtml(c.plan||"-")}</span></td><td>${escapeHtml(c.responsible||"-")}</td><td><div class="progress-line"><i style="width:${rate}%"></i></div><span class="micro muted">${rate}% concluído</span></td><td>${pend}</td><td><button class="btn secondary small" data-new-task-client="${c.id}">Nova tarefa</button></td></tr>`}).join("")}</tbody></table></div></div>`;
+}
+function ensureProfitDistributionTasks(){
+  if(activeSectorKey!=="contabil") return [];
+  const company=getCompany();
+  const dreDone=filteredTasks("contabil").filter(t=>t.tab==="DRE" && normalizeStatusForDone(t.status));
+  dreDone.forEach(d=>{
+    const exists=state.tasks.some(t=>t.companyId===company.id&&t.sectorKey==="contabil"&&t.clientId===d.clientId&&t.competence===filterState.competence&&t.tab==="Distribuição de Lucros");
+    if(!exists){ state.tasks.push({id:uid("tsk_"),companyId:company.id,sectorKey:"contabil",clientId:d.clientId,title:"Registrar distribuição de lucros",tab:"Distribuição de Lucros",competence:filterState.competence,status:"Pendente",priority:"Normal",responsible:d.responsible||getUser().name,dueDate:"",avgHours:0,value:0,quantity:1,partner:"",notes:"Registrar R$ 0,00 caso não tenha distribuição no período.",createdBy:getUser()?.id,updatedBy:getUser()?.id,createdAt:now(),updatedAt:now()}); }
+  });
+  save();
+  return state.tasks.filter(t=>t.companyId===company.id&&t.sectorKey==="contabil"&&t.competence===filterState.competence&&t.tab==="Distribuição de Lucros");
+}
+function renderProfitDistributionTab(sector){
+  const tasks=ensureProfitDistributionTasks();
+  const rows=tasks.map(t=>`<tr><td class="client-cell"><b>${escapeHtml(clientName(t.clientId))}</b><span>${escapeHtml(t.competence)}</span></td><td><span class="status-pill ${statusClass(t.status)}">${escapeHtml(t.status)}</span></td><td><b>${formatMoney(t.value)}</b></td><td>${escapeHtml(t.partner||"Não informado")}</td><td>${escapeHtml(t.notes||"-")}</td><td>${escapeHtml(userName(t.updatedBy||t.createdBy))}<br><span class="micro muted">${escapeHtml(t.updatedAt||t.createdAt)}</span></td><td><button class="btn secondary small" data-profit-edit="${t.id}">Registrar</button></td></tr>`).join("");
+  return `<div class="lux-card panel"><div class="section-head"><div><h3>${escapeHtml(tabLabel("Distribuição de Lucros"))}</h3><p>Entram aqui as empresas com DRE feita no mês. Se não houve distribuição, registre ${formatMoney(0)}.</p></div><button class="btn secondary small" data-export-sector>Exportar CSV</button></div><div class="special-table-note"><b>Controle personalizado:</b> esta aba não usa prazo nem tempo médio. O foco é valor distribuído, sócio/beneficiário e observação da distribuição.</div>${tasks.length?`<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Status</th><th>Quantidade de dinheiro</th><th>Sócio / beneficiário</th><th>Observação</th><th>Atualizado por</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty"><b>Nenhuma DRE finalizada ainda</b>Quando uma DRE for marcada como finalizada ou enviada, o cliente aparecerá aqui para registrar a distribuição.</div>`}</div>`;
+}
+function openProfitModal(taskId){
+  const t=state.tasks.find(x=>x.id===taskId); if(!t) return;
+  const body=`<div class="form-grid"><div class="notice">Cliente: <b>${escapeHtml(clientName(t.clientId))}</b> • Competência ${escapeHtml(t.competence)}</div><div class="row"><div class="field"><label>Quantidade de dinheiro</label><input id="profitValue" value="${formatMoney(t.value)}"><div class="money-preview" id="profitPreview">${formatMoney(t.value)}</div></div><div class="field"><label>Sócio / beneficiário</label><input id="profitPartner" value="${escapeHtml(t.partner||"")}" placeholder="Nome do sócio que recebeu"></div></div><div class="field"><label>Status</label><select id="profitStatus"><option ${t.status==='Pendente'?'selected':''}>Pendente</option><option ${t.status==='Registrada'?'selected':''}>Registrada</option><option ${t.status==='Enviada ao cliente'?'selected':''}>Enviada ao cliente</option></select></div><div class="field"><label>Observação</label><textarea id="profitNotes">${escapeHtml(t.notes||"")}</textarea></div></div>`;
+  openModal("Registrar distribuição de lucros", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="saveProfit">Salvar registro</button>`, true);
+  setupMoneyInput("profitValue","profitPreview");
+  document.getElementById("cancelModal").onclick=closeModal;
+  document.getElementById("saveProfit").onclick=()=>{t.value=parseMoney(val("profitValue")); t.partner=val("profitPartner"); t.status=val("profitStatus"); t.notes=val("profitNotes"); t.updatedBy=getUser().id; t.updatedAt=now(); addLog("contabil","Distribuição de lucros registrada",`${clientName(t.clientId)} • ${formatMoney(t.value)} • ${t.partner||'sem sócio informado'}`); save(); closeModal(); render(); toast("Distribuição salva.");};
+}
+function renderOperationalTab(sector, tab){
+  const tasks=tabTasksOpen(sector.key,tab); const flow=getWorkflowConfig(sector.key,tab);
+  return `<div class="lux-card panel"><div class="section-head"><div><h3>${escapeHtml(tabLabel(tab))}</h3><p>Controle operacional de ${escapeHtml(sector.name)} em ${filterState.competence}. Nesta aba, o foco fica nas tarefas abertas.</p></div><div class="toolbar-right"><button class="btn gold small" data-new-task-tab="${escapeHtml(tab)}">+ Adicionar</button><button class="btn secondary small" data-export-sector>Exportar CSV</button></div></div><div class="task-flow-note" style="margin-bottom:16px"><b>Ações pré-definidas desta aba:</b> ${flow.titleOptions.map(x=>escapeHtml(x)).join(" • ")}<br><b>Status disponíveis:</b> ${flow.statusOptions.map(x=>escapeHtml(x)).join(" • ")}</div>${renderTasksTable(tasks,true)}</div>`;
+}
+function renderTasksTable(tasks, actions=true){
+  if(!tasks.length) return `<div class="empty"><b>Nenhuma tarefa encontrada</b>Use “Nova tarefa” ou gere as pendências mensais para alimentar este setor.</div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>${L("Cliente")}</th><th>Tarefa</th><th>${L("Status")}</th><th>${L("Responsável")}</th><th>${L("Quantidade de dinheiro")}</th><th>Prazo</th><th>${L("Atualizado por")}</th>${actions?`<th>${L("Ações")}</th>`:""}</tr></thead><tbody>${tasks.map(t=>`<tr><td class="client-cell"><b>${escapeHtml(clientName(t.clientId))}</b><span>${escapeHtml(t.competence)}</span></td><td><b>${escapeHtml(t.title)}</b><br><span class="muted micro">${escapeHtml(t.notes||"")}</span><br><span class="status-pill ${statusClass(t.priority)}">${escapeHtml(t.priority||"Normal")}</span></td><td><span class="status-pill ${statusClass(t.status)}">${escapeHtml(t.status)}</span></td><td>${escapeHtml(t.responsible||"-")}</td><td><b>${formatMoney(t.value)}</b></td><td>${escapeHtml(t.dueDate||"-")}</td><td>${escapeHtml(userName(t.updatedBy||t.createdBy))}<br><span class="micro muted">${escapeHtml(t.updatedAt||t.createdAt)}</span></td>${actions?`<td><button class="btn secondary small" data-edit-task="${t.id}">${L("Editar")}</button><button class="btn success small" data-done-task="${t.id}">${L("Finalizar")}</button></td>`:""}</tr>`).join("")}</tbody></table></div>`;
+}
+function renderRanking(key){
+  const list=filteredTasks(key); const people={}; list.forEach(t=>{const p=t.responsible||"Sem responsável"; people[p]??={name:p,total:0,done:0,late:0,hours:0}; people[p].total++; if(normalizeStatusForDone(t.status))people[p].done++; if(t.status==='Atrasada')people[p].late++; people[p].hours+=Number(t.avgHours)||0;});
+  const rows=Object.values(people).sort((a,b)=>b.done-a.done);
+  return `<div class="lux-card panel"><div class="section-head"><div><h3>Ranking de colaboradores</h3><p>Score = concluídas/enviadas, menos atrasos, considerando volume e tempo médio.</p></div></div>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Posição</th><th>Colaborador</th><th>Total</th><th>Concluídas</th><th>Atrasos</th><th>Tempo médio</th><th>Score</th></tr></thead><tbody>${rows.map((r,i)=>{const avg=r.total?(r.hours/r.total).toFixed(1):0; const score=(r.done*10)-(r.late*4)+Math.max(0,20-Math.round(avg)); return `<tr><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td><b>${escapeHtml(r.name)}</b></td><td>${r.total}</td><td>${r.done}</td><td>${r.late}</td><td>${avg}h</td><td><b>${score}</b></td></tr>`}).join("")}</tbody></table></div>`:`<div class="empty"><b>Sem dados para ranking</b>Cadastre tarefas com responsáveis.</div>`}</div>`;
+}
+function renderPerformance(key){
+  const months=MONTHS.slice(0,6); const max=Math.max(1,...months.map(m=>state.tasks.filter(t=>t.companyId===getCompany().id&&t.sectorKey===key&&t.competence===m&&(normalizeStatusForDone(t.status))).length));
+  const current=filteredTasks(key); const overdue=current.filter(t=>t.status==='Atrasada').length; const total=current.length; const value=current.reduce((a,t)=>a+(Number(t.value)||0),0);
+  return `<div class="two-grid"><div class="lux-card panel"><div class="section-head"><div><h3>Análise de performance</h3><p>Comparação mensal, conclusão, atrasos e valor movimentado.</p></div></div><div class="bar-chart">${months.map(m=>{const n=state.tasks.filter(t=>t.companyId===getCompany().id&&t.sectorKey===key&&t.competence===m&&(normalizeStatusForDone(t.status))).length; return `<div class="bar-row"><span>${m}</span><div class="bar-bg"><i style="width:${Math.round(n/max*100)}%"></i></div><b>${n}</b></div>`}).join("")}</div></div><div class="lux-card panel"><div class="section-head"><div><h3>Indicadores executivos</h3><p>Dados prontos para acompanhamento gerencial.</p></div></div><div class="metric-list"><div class="metric-item"><span>Taxa de conclusão</span><b>${total?Math.round((total-overdue)/total*100):0}%</b></div><div class="metric-item"><span>Tarefas no período</span><b>${total}</b></div><div class="metric-item"><span>Atrasos</span><b>${overdue}</b></div><div class="metric-item"><span>Valor registrado</span><b>R$ ${value.toLocaleString('pt-BR')}</b></div><div class="metric-item"><span>Tempo médio por tarefa</span><b>${avgTime(current)}h</b></div></div></div></div>`;
+}
+function renderSectorReport(key){
+  return `<div class="lux-card panel"><div class="section-head"><div><h3>Relatório executivo</h3><p>Prévia do relatório do setor. Você pode baixar em HTML.</p></div><button class="btn gold" data-download-sector-report="${key}">Baixar relatório</button></div>${buildReportHTML([key],false)}</div>`;
+}
+function renderHistoryList(logs){ if(!logs.length)return `<div class="empty"><b>Sem histórico</b>As alterações feitas neste setor aparecerão aqui.</div>`; return `<div class="history-list">${logs.map(l=>`<div class="history-item"><b>${escapeHtml(l.action)} • ${escapeHtml(l.userName)}</b><span>${escapeHtml(l.detail)} • ${escapeHtml(l.date)}</span></div>`).join("")}</div>`; }
+function teamOptions(){ return state.users.filter(u=>u.companyId===getCompany().id).map(u=>u.name); }
+
+function bindDynamicActions(){
+  document.querySelectorAll("[data-screen-jump]").forEach(b=>b.onclick=()=>{screen=b.dataset.screenJump;render();});
+  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;render();});
+  const filt=document.querySelector("[data-open-filters]"); if(filt) filt.onclick=()=>{filtersOpen=!filtersOpen;render();};
+  ["fCompetence","fStatus","fResp","fClient","fPriority"].forEach(id=>{const el=document.getElementById(id); if(el) el.onchange=()=>{filterState={competence:document.getElementById("fCompetence").value,status:document.getElementById("fStatus").value,responsible:document.getElementById("fResp").value,client:document.getElementById("fClient").value,priority:document.getElementById("fPriority").value}; render();};});
+  const addClient=document.getElementById("addClient"); if(addClient) addClient.onclick=()=>{ const c={id:uid("cli_"),name:val("cliName"),cnpj:val("cliCnpj"),plan:val("cliPlan"),responsible:val("cliResponsible"),segment:val("cliSegment"),active:true,createdAt:now()}; if(!c.name)return toast("Informe o nome do cliente."); getCompany().clients.push(c); generateFrequentTasksForClient(c.id, filterState.competence); addLog("gestao","Cliente cadastrado",`${c.name} foi adicionado à base geral e entrou nos controles dos setores`); save(); render(); toast("Cliente adicionado e tarefas frequentes criadas."); };
+  const gen=document.getElementById("generateMonth"); if(gen) gen.onclick=()=>{generateMonthlyTasks(filterState.competence,true);render();toast("Pendências mensais geradas para todos os setores.");};
+  document.querySelectorAll("[data-toggle-client]").forEach(b=>b.onclick=()=>{const c=getCompany().clients.find(x=>x.id===b.dataset.toggleClient); c.active=c.active===false; addLog("gestao","Status de cliente alterado",`${c.name}: ${c.active?'ativo':'inativo'}`); save(); render();});
+  document.querySelectorAll("[data-del-client]").forEach(b=>b.onclick=()=>{const company=getCompany(); const c=company.clients.find(x=>x.id===b.dataset.delClient); company.clients=company.clients.filter(x=>x.id!==b.dataset.delClient); addLog("gestao","Cliente excluído",`${c?.name||'Cliente'} foi removido`); save(); render();});
+  document.querySelectorAll("[data-approve]").forEach(b=>b.onclick=()=>approveRequest(b.dataset.approve));
+  document.querySelectorAll("[data-reject]").forEach(b=>b.onclick=()=>{const r=getCompany().requests.find(x=>x.id===b.dataset.reject); if(r)r.status="rejected"; save(); render(); toast("Solicitação recusada.");});
+  document.querySelectorAll("[data-open-add-sector]").forEach(b=>b.onclick=openAddSector);
+  document.querySelectorAll("[data-remove-sector]").forEach(b=>b.onclick=()=>removeSector(b.dataset.removeSector));
+  document.querySelectorAll("[data-edit-user]").forEach(b=>b.onclick=()=>openUserPermissions(b.dataset.editUser));
+  document.querySelectorAll("[data-make-admin]").forEach(b=>b.onclick=()=>{const u=state.users.find(x=>x.id===b.dataset.makeAdmin); if(u){u.role="admin";u.permissions=getCompany().sectors.map(s=>s.key);addLog("gestao","Novo administrador",`${u.name} agora é ADM`);save();render();toast("Usuário virou ADM.");}});
+  document.querySelectorAll("[data-make-owner]").forEach(b=>b.onclick=()=>{const u=state.users.find(x=>x.id===b.dataset.makeOwner); if(u){u.role="owner";u.permissions=getCompany().sectors.map(s=>s.key);addLog("gestao","Novo ADM Principal",`${u.name} agora também é ADM Principal`);save();render();toast("Usuário virou ADM Principal.");}});
+  document.querySelectorAll("[data-new-task]").forEach(b=>b.onclick=()=>openTaskModal());
+  document.querySelectorAll("[data-new-task-tab]").forEach(b=>b.onclick=()=>openTaskModal({tab:b.dataset.newTaskTab}));
+  document.querySelectorAll("[data-new-task-client]").forEach(b=>b.onclick=()=>openTaskModal({clientId:b.dataset.newTaskClient,tab:"Clientes"}));
+  document.querySelectorAll("[data-edit-task]").forEach(b=>b.onclick=()=>openTaskModal({taskId:b.dataset.editTask}));
+  document.querySelectorAll("[data-done-task]").forEach(b=>b.onclick=()=>{const t=state.tasks.find(x=>x.id===b.dataset.doneTask); if(t){markTaskAsDone(t);addLog(t.sectorKey,"Tarefa concluída",`${t.title} • ${clientName(t.clientId)}`);save();render();toast("Tarefa concluída.");}});
+  const gensec=document.querySelector("[data-generate-sector-month]"); if(gensec) gensec.onclick=()=>{generateMonthlyTasks(filterState.competence,false,activeSectorKey);render();toast("Pendências do setor geradas.");};
+  const hist=document.querySelector("[data-open-history]"); if(hist) hist.onclick=openHistory;
+  const sett=document.querySelector("[data-open-sector-settings]"); if(sett) sett.onclick=openSectorSettings;
+  document.querySelectorAll("[data-export-sector]").forEach(b=>b.onclick=()=>downloadCSV(`tarefas_${activeSectorKey}.csv`, tasksToCSV(filteredTasks(activeSectorKey))));
+  document.querySelectorAll("[data-export-clients]").forEach(b=>b.onclick=()=>downloadCSV(`clientes.csv`, clientsToCSV(getCompany().clients)));
+  document.querySelectorAll("[data-download-sector-report]").forEach(b=>b.onclick=()=>downloadReport([b.dataset.downloadSectorReport]));
+  document.querySelectorAll("[data-download-all]").forEach(b=>b.onclick=()=>downloadReport(getCompany().sectors.map(s=>s.key)));
+  document.querySelectorAll("[data-profit-edit]").forEach(b=>b.onclick=()=>openProfitModal(b.dataset.profitEdit));
+}
+function val(id){return document.getElementById(id)?.value.trim()||"";}
+function approveRequest(id){
+  const company=getCompany(); const r=company.requests.find(x=>x.id===id); if(!r)return;
+  const perms=[...document.querySelectorAll(`[data-perm="${id}"]:checked`)].map(x=>x.value);
+  if(!perms.length) return toast("Escolha pelo menos um setor para liberar.");
+  const u={id:uid("usr_"),companyId:company.id,name:r.name,email:r.email,password:r.password,role:"user",permissions:perms,preferences:{},createdAt:now()};
+  state.users.push(u); r.status="approved"; addLog("gestao","Usuário aprovado",`${u.name} foi aprovado com ${perms.length} setor(es)`); save(); render(); toast("Usuário aprovado.");
+}
+function removeSector(key){ const company=getCompany(); const s=company.sectors.find(x=>x.key===key); if(!s)return; company.sectors=company.sectors.filter(x=>x.key!==key); state.tasks=state.tasks.filter(t=>!(t.companyId===company.id && t.sectorKey===key)); state.users.filter(u=>u.companyId===company.id).forEach(u=>u.permissions=(u.permissions||[]).filter(p=>p!==key)); addLog("gestao","Setor excluído",`${s.name} foi removido`); save(); render(); toast("Setor excluído."); }
+function recurringItemsForSector(sector){
+  const map={
+    gestao:[{tab:"Metas",title:"Revisar resultado mensal",status:"Pendente"}],
+    contabil:[{tab:"DRE",title:"DRE INICIADA",status:"Pendente"}],
+    fiscal:[{tab:"Obrigações",title:"Transmitir declaração fiscal mensal",status:"Pendente"}],
+    financeiro:[{tab:"Cobranças",title:"Emitir cobrança mensal",status:"Pendente"}],
+    dp:[{tab:"Folha",title:"Processar folha",status:"Pendente"}],
+    compliance:[{tab:"Controles",title:"Revisar controle interno",status:"Pendente"}],
+    auditoria:[{tab:"Planejamento",title:"Planejar auditoria",status:"Pendente"}],
+    marketing:[{tab:"Métricas",title:"Atualizar métricas",status:"Pendente"}],
+    comercial:[{tab:"Follow-up",title:"Realizar follow-up",status:"Pendente"}],
+    rh:[{tab:"Pessoas",title:"Atualizar cadastro de colaborador",status:"Pendente"}]
+  };
+  return map[sector.key] || [];
+}
+function generateFrequentTasksForClient(clientId, month, onlySector=null){
+  const company=getCompany(); const sectors=company.sectors.filter(s=>onlySector?s.key===onlySector:true);
+  sectors.forEach(sector=>{
+    recurringItemsForSector(sector).forEach((item,ti)=>{
+      const exists=state.tasks.some(t=>t.companyId===company.id&&t.sectorKey===sector.key&&t.clientId===clientId&&t.competence===month&&t.tab===item.tab&&t.title===item.title);
+      if(exists) return;
+      const client=company.clients.find(c=>c.id===clientId); const responsible=client?.responsible || getUser().name;
+      state.tasks.push({id:uid("tsk_"),companyId:company.id,sectorKey:sector.key,clientId,title:item.title,tab:item.tab,competence:month,status:item.status||"Pendente",priority:ti===0?"Alta":"Normal",responsible,dueDate:"",avgHours:defaultHours(item.title,sector.key),value:0,quantity:1,notes:"Tarefa frequente gerada automaticamente para o mês de referência.",createdBy:getUser()?.id,updatedBy:getUser()?.id,createdAt:now(),updatedAt:now()});
+    });
+  });
+}
+function generateMonthlyTasks(month, all=false, onlySector=null){
+  const company=getCompany(); const sectors=company.sectors.filter(s=>onlySector?s.key===onlySector:true); const clients=company.clients.filter(c=>c.active!==false);
+  sectors.forEach(sector=>{ clients.forEach(client=>generateFrequentTasksForClient(client.id, month, sector.key)); });
+  addLog(onlySector||"gestao","Pendências frequentes geradas",`${month} • ${onlySector?sectorByKey(onlySector).name:'todos os setores'} • somente rotinas recorrentes`); save();
+}
+function matchTab(sector,title){ const t=title.toLowerCase(); const tabs=sector.tabs; const found=tabs.find(tab=>t.includes(tab.toLowerCase().split("/")[0].split(" ")[0])); if(found)return found; if(t.includes("extrato"))return"Extratos"; if(t.includes("dre"))return"DRE"; if(t.includes("lucro"))return"Distribuição de Lucros"; if(t.includes("reuni"))return"Reuniões"; if(t.includes("nota"))return"Notas Fiscais"; if(t.includes("reinf")||t.includes("dctf"))return"Reinf/DCTFWeb"; if(t.includes("folha"))return"Folha"; if(t.includes("lead"))return"Leads"; if(t.includes("venda"))return"Vendas"; if(t.includes("risco"))return"Riscos"; return tabs[1]||"Visão Geral"; }
+function dueDateFor(month,i){ const [mm,yy]=month.split("/"); return `${String(Math.min(28,5+i*2)).padStart(2,'0')}/${mm}/${yy}`; }
+function defaultHours(title,key){ if(title.toLowerCase().includes("dre"))return 2.5; if(title.toLowerCase().includes("folha"))return 3; if(title.toLowerCase().includes("auditoria"))return 4; if(key==="comercial")return 1; return 1.5; }
+
+function openModal(title, body, foot="", small=false){ const root=document.getElementById("modalRoot"); root.innerHTML=`<div class="modal ${small?'small':''}"><div class="modal-head"><h3>${title}</h3><button class="x" id="closeModal">×</button></div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:""}</div>`; root.classList.add("open"); document.getElementById("closeModal").onclick=closeModal; root.onclick=e=>{if(e.target===root)closeModal();}; }
+function closeModal(){ document.getElementById("modalRoot").classList.remove("open"); }
+function openTaskModal(opts={}){
+  const edit=opts.taskId?state.tasks.find(t=>t.id===opts.taskId):null; const sector=sectorByKey(activeSectorKey); const tab=opts.tab||edit?.tab||activeTab; const activeClients=getCompany().clients.filter(c=>c.active!==false); const clientId=opts.clientId||edit?.clientId||activeClients[0]?.id||"";
+  const body=`<div class="form-grid"><div class="row"><div class="field"><label>${L("Cliente")}</label><div class="search-field"><span class="search-icon">🔎</span><input id="taskClientSearch" placeholder="Pesquisar cliente pelo nome ou CNPJ"></div><select id="taskClient">${activeClients.map(c=>`<option value="${c.id}" ${clientId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join("")}</select></div><div class="field"><label>Aba/controle</label><select id="taskTab">${sector.tabs.filter(t=>!['Visão Geral','Performance','Relatório Executivo','Ranking'].includes(t)).map(t=>`<option ${tab===t?'selected':''}>${escapeHtml(t)}</option>`).join("")}</select></div></div><div class="row"><div class="field"><label>Ação desta aba</label><select id="taskTitle"></select></div><div class="field"><label>${L("Status")}</label><select id="taskStatus"></select></div></div><div class="row"><div class="field"><label>${L("Prioridade")}</label><select id="taskPriority">${PRIORITIES.map(p=>`<option ${edit?.priority===p?'selected':''}>${p}</option>`).join("")}</select></div><div class="field"><label>${L("Competência")}</label><select id="taskMonth">${MONTHS.map(m=>`<option ${edit?.competence===m||(!edit&&filterState.competence===m)?'selected':''}>${m}</option>`).join("")}</select></div></div><div class="row"><div class="field"><label>${L("Responsável")}</label><input id="taskResp" value="${escapeHtml(edit?.responsible||getUser().name)}"></div><div class="field"><label>Prazo</label><input id="taskDue" value="${escapeHtml(edit?.dueDate||"")}" placeholder="dd/mm/aaaa"></div></div><div class="row"><div class="field"><label>Tempo médio estimado em horas</label><input id="taskHours" type="number" step="0.1" value="${escapeHtml(edit?.avgHours||1)}"></div><div class="field"><label>Quantidade</label><input id="taskQty" type="number" value="${escapeHtml(edit?.quantity||1)}"></div></div><div class="row"><div class="field"><label>Quantidade de dinheiro</label><input id="taskValue" value="${formatMoney(edit?.value||0)}"><div class="money-preview" id="taskMoneyPreview">${formatMoney(edit?.value||0)}</div></div><div class="field"><label>Observação</label><textarea id="taskNotes">${escapeHtml(edit?.notes||"")}</textarea></div></div><div class="task-flow-note" id="taskFlowNote"></div></div>`;
+  openModal(edit?"Editar tarefa":"Nova tarefa", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="saveTask">Salvar tarefa</button>`);
+  document.getElementById("cancelModal").onclick=closeModal;
+  document.getElementById("taskClientSearch").oninput=filterTaskClientOptions;
+  document.getElementById("taskTab").onchange=()=>syncTaskWorkflow(edit);
+  filterTaskClientOptions();
+  document.getElementById("taskClient").value = clientId;
+  syncTaskWorkflow(edit);
+  setupMoneyInput("taskValue","taskMoneyPreview");
+  document.getElementById("saveTask").onclick=()=>{ const data={clientId:val("taskClient"),tab:val("taskTab"),title:val("taskTitle"),status:val("taskStatus"),priority:val("taskPriority"),responsible:val("taskResp"),competence:val("taskMonth"),dueDate:val("taskDue"),avgHours:Number(val("taskHours"))||0,quantity:Number(val("taskQty"))||1,value:parseMoney(val("taskValue")),notes:val("taskNotes")}; if(!data.title)return toast("Escolha a ação da tarefa."); if(edit){Object.assign(edit,data,{updatedBy:getUser().id,updatedAt:now()}); addLog(activeSectorKey,"Tarefa alterada",`${data.title} • ${clientName(data.clientId)}`);} else {state.tasks.push({id:uid("tsk_"),companyId:getCompany().id,sectorKey:activeSectorKey,...data,createdBy:getUser().id,updatedBy:getUser().id,createdAt:now(),updatedAt:now()}); addLog(activeSectorKey,"Tarefa criada",`${data.title} • ${clientName(data.clientId)}`);} save(); closeModal(); render(); toast("Tarefa salva."); };
+}
+function openHistory(){ const logs=state.logs.filter(l=>l.companyId===getCompany().id&&l.sectorKey===activeSectorKey); openModal("Histórico do setor", renderHistoryList(logs), "", false); }
+function getSectorPrefs(key){ const u=getUser(); u.preferences??={}; u.preferences[key]??={}; const sector=sectorByKey(key); const raw=u.preferences[key]; const bg=raw.bg||""; const card=raw.card||""; const contrastBase=card||bg||"#f4f6f9"; return {bg,card,accent:raw.accent||sector?.color||"#1d4ed8",font:raw.font||"Inter",language:raw.language||"Português",ink:raw.ink||readableTextFor(contrastBase),muted:raw.muted||readableMutedFor(contrastBase),button:raw.button||"#111827",sidebar:raw.sidebar||"#0d1526",topbar:raw.topbar||"#ffffff",...raw}; }
+function openSectorSettings(){ const p=getSectorPrefs(activeSectorKey); const body=`<div class="settings-grid"><div class="field"><label>Fonte</label><select id="prefFont"><option ${p.font==='Inter'?'selected':''}>Inter</option><option ${p.font==='Georgia'?'selected':''}>Georgia</option><option ${p.font==='Arial'?'selected':''}>Arial</option><option ${p.font==='Verdana'?'selected':''}>Verdana</option></select></div><div class="field"><label>Idioma visual</label><select id="prefLang"><option ${p.language==='Português'?'selected':''}>Português</option><option ${p.language==='English'?'selected':''}>English</option><option ${p.language==='Español'?'selected':''}>Español</option></select></div><div class="field"><label>Cor de destaque</label><input type="color" id="prefAccent" value="${p.accent}"></div><div class="field"><label>Cor de fundo</label><input type="color" id="prefBg" value="${p.bg||'#f4f6f9'}"></div><div class="field"><label>Cor dos blocos/cards</label><input type="color" id="prefCard" value="${p.card||'#ffffff'}"></div><div class="field"><label>Cor do texto principal</label><input type="color" id="prefInk" value="${p.ink}"></div><div class="field"><label>Cor do texto secundário</label><input type="color" id="prefMuted" value="${p.muted}"></div><div class="field"><label>Cor dos botões principais</label><input type="color" id="prefButton" value="${p.button}"></div><div class="field"><label>Cor da barra lateral</label><input type="color" id="prefSidebar" value="${p.sidebar}"></div><div class="field"><label>Cor da barra superior</label><input type="color" id="prefTopbar" value="${p.topbar}"></div><div class="field"><label>Resetar</label><button class="btn secondary" id="resetPrefs">Padrão do setor</button></div></div><div class="notice" style="margin-top:14px">Essa personalização fica salva apenas para você e somente neste setor. Se você escolher fundo escuro, o sistema já sugere texto claro para manter a leitura.</div>`;
+  openModal("Personalização do setor", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="savePrefs">Salvar personalização</button>`, false);
+  document.getElementById("prefBg").oninput=()=>{document.getElementById("prefInk").value=readableTextFor(val("prefBg"));document.getElementById("prefMuted").value=readableMutedFor(val("prefBg"));};
+  document.getElementById("cancelModal").onclick=closeModal;
+  document.getElementById("resetPrefs").onclick=()=>{getUser().preferences[activeSectorKey]={}; save(); closeModal(); render();};
+  document.getElementById("savePrefs").onclick=()=>{const u=getUser();u.preferences??={};u.preferences[activeSectorKey]={font:val("prefFont"),language:val("prefLang"),accent:val("prefAccent"),bg:val("prefBg"),card:val("prefCard"),ink:val("prefInk"),muted:val("prefMuted"),button:val("prefButton"),sidebar:val("prefSidebar"),topbar:val("prefTopbar")}; addLog(activeSectorKey,"Personalização alterada","Preferências visuais do usuário foram atualizadas"); save(); closeModal(); render(); toast("Personalização salva.");};
+}
+function applySectorPreferences(){
+  if(screen!=="sector"||!activeSectorKey){ document.documentElement.style.setProperty('--bg','#f4f6f9'); document.documentElement.style.setProperty('--card','#ffffff'); document.documentElement.style.setProperty('--ink','#111827'); document.documentElement.style.setProperty('--muted','#6b7280'); document.documentElement.style.setProperty('--nav','#101827'); document.documentElement.style.setProperty('--accent','#1d4ed8'); return; }
+  const p=getSectorPrefs(activeSectorKey); const page=document.querySelector(".page"); const side=document.querySelector(".sidebar"); const top=document.querySelector(".topbar");
+  if(page){page.style.background=p.bg||"";page.style.fontFamily=p.font||"";} if(side){side.style.background=`linear-gradient(180deg,${p.sidebar},#111827 70%,#0b1120)`;} if(top){top.style.background=p.topbar; top.style.color=readableTextFor(p.topbar);} 
+  document.documentElement.style.setProperty('--accent',p.accent||sectorByKey(activeSectorKey).color); document.documentElement.style.setProperty('--card',p.card||'#ffffff'); document.documentElement.style.setProperty('--ink',p.ink||readableTextFor(p.bg||'#f4f6f9')); document.documentElement.style.setProperty('--muted',p.muted||readableMutedFor(p.bg||'#f4f6f9')); document.documentElement.style.setProperty('--nav',p.button||'#111827');
+}
+function openAddSector(){ const body=`<div class="form-grid"><div class="field"><label>Nome do setor</label><input id="newSectorName" placeholder="Ex: BPO Financeiro"></div><div class="row"><div class="field"><label>Ícone</label><input id="newSectorIcon" value="💼"></div><div class="field"><label>Cor do setor</label><input id="newSectorColor" type="color" value="#111827"></div></div><div class="field"><label>Descrição</label><textarea id="newSectorDesc" placeholder="Explique o controle desse setor"></textarea></div><div class="field"><label>Abas separadas por vírgula</label><input id="newSectorTabs" value="Visão Geral, Clientes, Pendências, Performance, Ranking, Relatório Executivo"></div><div class="field"><label>Tarefas mensais padrão separadas por vírgula</label><textarea id="newSectorTemplates">Receber documentos, Conferir informações, Executar tarefa mensal, Enviar retorno ao cliente</textarea></div></div>`; openModal("Adicionar novo setor", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="saveSector">Adicionar setor</button>`); document.getElementById("cancelModal").onclick=closeModal; document.getElementById("saveSector").onclick=()=>{const name=val("newSectorName"); if(!name)return toast("Informe o nome do setor."); const key=normalizeKey(name); if(getCompany().sectors.some(s=>s.key===key))return toast("Já existe setor com esse nome."); const s={key,name,icon:val("newSectorIcon")||"💼",color:val("newSectorColor")||"#111827",desc:val("newSectorDesc")||"Setor personalizado",tabs:val("newSectorTabs").split(",").map(x=>x.trim()).filter(Boolean),templates:val("newSectorTemplates").split(",").map(x=>x.trim()).filter(Boolean)}; if(!s.tabs.includes("Performance"))s.tabs.push("Performance"); if(!s.tabs.includes("Relatório Executivo"))s.tabs.push("Relatório Executivo"); getCompany().sectors.push(s); state.users.filter(u=>u.companyId===getCompany().id&&u.role!=="user").forEach(u=>u.permissions.push(key)); addLog("gestao","Setor adicionado",`${name} foi criado`); save(); closeModal(); render(); toast("Setor adicionado.");}; }
+function openUserPermissions(userId){ const u=state.users.find(x=>x.id===userId); const body=`<div class="form-grid"><div class="notice">Usuário: <b>${escapeHtml(u.name)}</b> • ${escapeHtml(u.email)}</div><div class="check-grid">${getCompany().sectors.map(s=>`<label class="check-tile"><input type="checkbox" id="perm_${s.key}" value="${s.key}" ${u.permissions?.includes(s.key)?'checked':''}> ${s.icon} ${escapeHtml(s.name)}</label>`).join("")}</div></div>`; openModal("Editar permissões", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="savePerms">Salvar permissões</button>`); document.getElementById("cancelModal").onclick=closeModal; document.getElementById("savePerms").onclick=()=>{u.permissions=[...document.querySelectorAll('[id^="perm_"]:checked')].map(x=>x.value); addLog("gestao","Permissões alteradas",`${u.name} agora tem ${u.permissions.length} setor(es)`); save(); closeModal(); render(); toast("Permissões salvas.");}; }
+function openForgotPassword(){ const body=`<div class="form-grid"><div class="field"><label>E-mail cadastrado</label><input id="resetEmail" placeholder="seuemail@empresa.com.br"></div><button class="btn gold" id="sendCode">Enviar código</button><div id="codeBox" class="notice hidden"></div><div class="row"><div class="field"><label>Código recebido</label><input id="resetCode" placeholder="000000"></div><div class="field"><label>Nova senha</label><input id="resetNewPass" type="password"></div></div></div>`; openModal("Recuperar senha", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn" id="confirmReset">Alterar senha</button>`, true); document.getElementById("cancelModal").onclick=closeModal; document.getElementById("sendCode").onclick=()=>{const email=val("resetEmail").toLowerCase(); const u=state.users.find(x=>x.email.toLowerCase()===email); if(!u)return toast("E-mail não encontrado."); const code=String(Math.floor(100000+Math.random()*900000)); state.passwordResets=state.passwordResets.filter(r=>r.email!==email); state.passwordResets.push({email,code,createdAt:Date.now()}); save(); const box=document.getElementById("codeBox"); box.classList.remove("hidden"); box.innerHTML=`<b>Código enviado:</b> ${code}<br><span>Simulação: em produção esse código será enviado para o e-mail do usuário.</span>`; }; document.getElementById("confirmReset").onclick=()=>{const email=val("resetEmail").toLowerCase(); const code=val("resetCode"); const pass=val("resetNewPass"); const reset=state.passwordResets.find(r=>r.email===email&&r.code===code); if(!reset)return toast("Código inválido."); if(!pass)return toast("Informe a nova senha."); const u=state.users.find(x=>x.email.toLowerCase()===email); u.password=pass; state.passwordResets=state.passwordResets.filter(r=>r!==reset); save(); closeModal(); toast("Senha alterada com sucesso.");}; }
+
+function buildReportHTML(sectorKeys, standalone=true){
+  const company=getCompany(); const sectors=company.sectors.filter(s=>sectorKeys.includes(s.key));
+  const parts=sectors.map(s=>{const list=state.tasks.filter(t=>t.companyId===company.id&&t.sectorKey===s.key&&t.competence===filterState.competence); const done=list.filter(t=>normalizeStatusForDone(t.status)).length; const pending=list.length-done; const rate=list.length?Math.round(done/list.length*100):0; return `<div class="report-preview"><div class="report-cover"><h2>${s.icon} ${escapeHtml(s.name)}</h2><p>Relatório executivo • Competência ${filterState.competence} • ${escapeHtml(company.name)}</p></div><div class="dashboard-grid">${kpi("Conclusão",rate+"%","Taxa de execução","navy","📌")}${kpi("Finalizadas",done,"Concluídas ou enviadas","green","✅")}${kpi("Pendentes",pending,"Abertas no período","gold","⚠️")}${kpi("Clientes",new Set(list.map(t=>t.clientId)).size,"Movimentados","blue","👥")}</div><div class="divider"></div><h3>Principais indicadores</h3><div class="metric-list"><div class="metric-item"><span>Tempo médio por tarefa</span><b>${avgTime(list)}h</b></div><div class="metric-item"><span>Atrasos críticos</span><b>${list.filter(t=>t.status==='Atrasada'||t.priority==='Crítica').length}</b></div><div class="metric-item"><span>Valor registrado</span><b>R$ ${list.reduce((a,t)=>a+(Number(t.value)||0),0).toLocaleString('pt-BR')}</b></div></div><div class="divider"></div><h3>Tarefas e pendências</h3>${renderTasksTable(list,true)}</div>`}).join("<br>");
+  if(!standalone) return parts;
+  const fecharStyle = "</sty" + "le>";
+  const fecharBody = "</bo" + "dy>";
+  const fecharHtml = "</ht" + "ml>";
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório Executivo</title><style>${document.querySelector('style').innerHTML}
+    .side-nav button.active[data-sector]{background:rgba(34,197,94,.18);color:#dcfce7;border:1px solid rgba(74,222,128,.30);box-shadow:inset 0 0 0 1px rgba(34,197,94,.10)}
+    .money-preview{padding:10px 12px;border:1px solid #dbeafe;background:#eff6ff;border-radius:12px;color:#1e3a8a;font-weight:900;font-size:13px}
+    .special-table-note{padding:13px 14px;border-radius:16px;background:#f8fafc;border:1px dashed #cbd5e1;color:#475569;font-size:13px;line-height:1.55;margin-bottom:14px}
+    .tab-context{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+    .dark-auto-note{font-size:12px;color:#64748b;line-height:1.5}
+${fecharStyle}</head><body><section class="page">${parts}</section>${fecharBody}${fecharHtml}`;
+}
+function downloadReport(keys){ const html=buildReportHTML(keys,true); const name=keys.length>1?`relatorio_geral_${filterState.competence.replace('/','_')}.html`:`relatorio_${keys[0]}_${filterState.competence.replace('/','_')}.html`; downloadText(name,html,"text/html"); }
+function downloadText(filename, content, type="text/plain"){ const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
+function downloadCSV(name,csv){ downloadText(name,csv,"text/csv;charset=utf-8"); }
+function tasksToCSV(tasks){ const head=["Cliente","Setor","Aba","Tarefa","Status","Responsavel","Competencia","Prazo","TempoMedio","Prioridade","AtualizadoPor"]; const rows=tasks.map(t=>[clientName(t.clientId),sectorByKey(t.sectorKey)?.name,t.tab,t.title,t.status,t.responsible,t.competence,t.dueDate,t.avgHours,t.priority,userName(t.updatedBy)].map(csvEsc).join(";")); return [head.join(";"),...rows].join("\n"); }
+function clientsToCSV(clients){ const head=["Cliente","CNPJ","Plano","Responsavel","Segmento","Status"]; const rows=clients.map(c=>[c.name,c.cnpj,c.plan,c.responsible,c.segment,c.active!==false?'Ativo':'Inativo'].map(csvEsc).join(";")); return [head.join(";"),...rows].join("\n"); }
+function csvEsc(v){ return `"${String(v??"").replaceAll('"','""')}"`; }
+
+render();
+</script>
+</body>
+</html>
