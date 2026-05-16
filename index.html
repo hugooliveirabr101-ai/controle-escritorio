@@ -58,12 +58,299 @@
   <div id="modalRoot" class="modal-backdrop"></div>
   <div id="toast" class="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =========================================================
+   CONTROLE ESCRITÓRIO - BACKEND SUPABASE FRONTEND
+   Use este arquivo depois de carregar:
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+   <script src="controle_escritorio_supabase_backend.js"></script>
+   ========================================================= */
+
+const SUPABASE_URL = "https://ccseivxfbwmszegmgicj.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SznpFAglmFsronkE8dhPlg_vcf4j9LU";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+window.CEBackend = {
+  supabaseClient,
+
+  async cadastrarEmpresa({ nomeEmpresa, emailEmpresa, nomeUsuario, emailUsuario, senha }) {
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+      email: emailUsuario,
+      password: senha
+    });
+
+    if (authError && !String(authError.message).toLowerCase().includes("already")) {
+      throw authError;
+    }
+
+    if (authError && String(authError.message).toLowerCase().includes("already")) {
+      const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+        email: emailUsuario,
+        password: senha
+      });
+      if (loginError) throw loginError;
+    }
+
+    const { data: empresaId, error: rpcError } = await supabaseClient.rpc(
+      "criar_empresa_com_admin",
+      {
+        p_nome_empresa: nomeEmpresa,
+        p_email_empresa: emailEmpresa,
+        p_nome_usuario: nomeUsuario
+      }
+    );
+
+    if (rpcError) throw rpcError;
+    return empresaId;
+  },
+
+  async cadastrarUsuarioSolicitandoAcesso({ nome, email, senha, emailEmpresa }) {
+    const { error: authError } = await supabaseClient.auth.signUp({
+      email,
+      password: senha
+    });
+
+    if (authError && !String(authError.message).toLowerCase().includes("already")) {
+      throw authError;
+    }
+
+    if (authError && String(authError.message).toLowerCase().includes("already")) {
+      const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password: senha
+      });
+      if (loginError) throw loginError;
+    }
+
+    const { data: empresaId, error: acessoError } = await supabaseClient.rpc(
+      "solicitar_acesso_empresa",
+      {
+        p_email_empresa: emailEmpresa,
+        p_nome: nome,
+        p_email_usuario: email
+      }
+    );
+
+    if (acessoError) throw acessoError;
+    return empresaId;
+  },
+
+  async login(email, senha) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password: senha
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async logout() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+  },
+
+  async usuarioAtual() {
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error) throw error;
+    return data.user;
+  },
+
+  async contextoAtual() {
+    const user = await this.usuarioAtual();
+    if (!user) return null;
+
+    const { data: perfis, error } = await supabaseClient
+      .from("usuarios_empresa")
+      .select("*, empresas(*)")
+      .eq("user_id", user.id)
+      .order("criado_em", { ascending: false });
+
+    if (error) throw error;
+
+    const perfil = perfis?.[0] || null;
+    return { user, perfil, empresa: perfil?.empresas || null };
+  },
+
+  async enviarCodigoRecuperacao(email) {
+    const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    return data;
+  },
+
+  async confirmarCodigoENovaSenha({ email, codigo, novaSenha }) {
+    const { error: verifyError } = await supabaseClient.auth.verifyOtp({
+      email,
+      token: codigo,
+      type: "recovery"
+    });
+    if (verifyError) throw verifyError;
+
+    const { data, error: updateError } = await supabaseClient.auth.updateUser({
+      password: novaSenha
+    });
+    if (updateError) throw updateError;
+    return data;
+  },
+
+  async listarSetores(empresaId) {
+    const { data, error } = await supabaseClient
+      .from("setores")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .eq("ativo", true)
+      .order("criado_em", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async listarClientes(empresaId) {
+    const { data, error } = await supabaseClient
+      .from("clientes")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .order("nome", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async salvarCliente(cliente) {
+    const { data, error } = await supabaseClient
+      .from("clientes")
+      .insert([cliente])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async atualizarCliente(id, updates) {
+    const { data, error } = await supabaseClient
+      .from("clientes")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async listarTarefas(empresaId, filtros = {}) {
+    let query = supabaseClient
+      .from("tarefas")
+      .select("*, clientes(nome)")
+      .eq("empresa_id", empresaId)
+      .order("criado_em", { ascending: false });
+
+    if (filtros.setor_chave) query = query.eq("setor_chave", filtros.setor_chave);
+    if (filtros.competencia) query = query.eq("competencia", filtros.competencia);
+    if (filtros.cliente_id) query = query.eq("cliente_id", filtros.cliente_id);
+    if (filtros.status) query = query.eq("status", filtros.status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async salvarTarefa(tarefa) {
+    const user = await this.usuarioAtual();
+    const payload = {
+      ...tarefa,
+      criado_por: user?.id || null,
+      atualizado_por: user?.id || null
+    };
+
+    const { data, error } = await supabaseClient
+      .from("tarefas")
+      .insert([payload])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async atualizarTarefa(id, updates) {
+    const user = await this.usuarioAtual();
+    const { data, error } = await supabaseClient
+      .from("tarefas")
+      .update({ ...updates, atualizado_por: user?.id || null, atualizado_em: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async registrarHistorico({ empresa_id, setor_chave, acao, detalhe }) {
+    const user = await this.usuarioAtual();
+    const { data, error } = await supabaseClient
+      .from("historico")
+      .insert([{
+        empresa_id,
+        setor_chave,
+        user_id: user?.id || null,
+        acao,
+        detalhe
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async listarHistorico(empresaId, setorChave = null) {
+    let query = supabaseClient
+      .from("historico")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .order("criado_em", { ascending: false });
+
+    if (setorChave) query = query.eq("setor_chave", setorChave);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async listarSolicitacoesPendentes(empresaId) {
+    const { data, error } = await supabaseClient
+      .from("usuarios_empresa")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .eq("status", "pending")
+      .order("criado_em", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async aprovarUsuario(usuarioEmpresaId, setoresPermitidos, role = "user") {
+    const { data, error } = await supabaseClient
+      .from("usuarios_empresa")
+      .update({
+        status: "approved",
+        role,
+        setores_permitidos: setoresPermitidos
+      })
+      .eq("id", usuarioEmpresaId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
+
+</script>
+
 <script>
 /*
   Controle Escritório - Protótipo HTML/CSS/JS
   ---------------------------------------------------------------
-  Este arquivo é uma simulação visual e funcional em navegador.
-  Para testar rápido, os dados ficam no localStorage.
+  Este arquivo é a versão visual integrada ao Supabase no navegador.
+  Versão integrada ao Supabase. Os dados devem ser salvos no banco online.
   Na etapa de produção, substitua as funções API abaixo por chamadas ao Supabase/Firebase/API própria:
   - api.createCompany
   - api.createUserRequest
@@ -297,7 +584,7 @@ function renderAuth(){
         <p>Cadastre a empresa, aprove usuários, libere setores por permissão, acompanhe pendências, DRE, fiscal, DP, comercial, marketing, auditoria e gere relatórios executivos com poucos cliques.</p>
         <div class="hero-pills"><span>Permissões por setor</span><span>Histórico de alterações</span><span>Relatórios executivos</span><span>Performance mensal</span></div>
       </div>
-      <div class="notice" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:#e5e7eb;position:relative;z-index:1">Nesta etapa, o envio de e-mail e banco de dados estão simulados. Depois conectamos ao backend real.</div>
+      <div class="notice" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:#e5e7eb;position:relative;z-index:1">Nesta etapa, o envio de e-mail e banco de dados estão conectados ao Supabase. Execute o SQL final no Supabase antes de usar em produção.</div>
     </div>
     <div class="auth-card-wrap">
       <div class="auth-card">
@@ -313,7 +600,7 @@ function renderAuth(){
             <button class="btn gold" id="btnLogin">Entrar na empresa</button>
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
               <button class="link-btn" id="forgotPass">Esqueci minha senha</button>
-              <button class="btn secondary small" id="demoBtn">Criar ambiente de demonstração</button>
+              <button class="btn secondary small hidden" id="demoBtn">Criar ambiente de demonstração</button>
             </div>
           </div>
         </div>
@@ -357,9 +644,7 @@ function bindAuth(){
         await hydrateFromSupabase();
         screen="dashboard"; render(); toast("Login realizado com sucesso."); return;
       }
-      const u=state.users.find(x=>x.email.toLowerCase()===email && x.password===pass && x.status!=="pending");
-      if(!u) return toast("E-mail ou senha inválidos, ou usuário ainda não aprovado.");
-      session={userId:u.id,companyId:u.companyId}; saveSession(); screen="dashboard"; render();
+      return toast("Banco Supabase não carregou. Verifique a internet, o SQL final e a chave pública.");
     }catch(e){toast(e.message||"Não foi possível entrar.");}
   };
   document.getElementById("btnCreateCompany").onclick=async()=>{
@@ -375,11 +660,7 @@ function bindAuth(){
         await hydrateFromSupabase();
         screen="dashboard"; render(); toast("Empresa criada no banco com sucesso."); return;
       }
-      if(state.companies.some(c=>c.email.toLowerCase()===email)) return toast("Já existe empresa com esse e-mail.");
-      const companyId=uid("comp_"); const userId=uid("usr_");
-      const company={id:companyId,name,email,password:p,createdAt:now(),sectors:deepClone(SECTOR_LIBRARY),clients:[],requests:[]};
-      const user={id:userId,companyId,name:adminName,email,password:p,role:"owner",permissions:company.sectors.map(s=>s.key),preferences:{}};
-      state.companies.push(company); state.users.push(user); session={userId,companyId}; save(); saveSession(); render(); toast("Empresa criada com sucesso.");
+      return toast("Banco Supabase não carregou. A empresa não foi criada localmente.");
     }catch(e){toast(e.message||"Erro ao criar empresa no banco.");}
   };
   document.getElementById("btnRequestAccess").onclick=async()=>{
@@ -391,10 +672,7 @@ function bindAuth(){
         await CEBackend.cadastrarUsuarioSolicitandoAcesso({nome,email,senha:pass,emailEmpresa:companyEmail});
         toast("Solicitação enviada ao ADM principal. Aguarde aprovação."); return;
       }
-      const company=state.companies.find(c=>c.email.toLowerCase()===companyEmail);
-      if(!company) return toast("Empresa não encontrada.");
-      if(state.users.some(u=>u.email.toLowerCase()===email && u.companyId===company.id)) return toast("Esse e-mail já existe nessa empresa.");
-      company.requests.push({id:uid("req_"),name,email,password:pass,createdAt:now(),status:"pending"}); save(); toast("Solicitação enviada ao ADM principal.");
+      return toast("Banco Supabase não carregou. A solicitação não foi salva localmente.");
     }catch(e){toast(e.message||"Erro ao enviar solicitação.");}
   };
   document.getElementById("forgotPass").onclick=openForgotPassword;
@@ -473,7 +751,7 @@ function renderDashboard(){
         </div>
       </div>
     </div>
-    <div class="app-footer-note"><b>Preparado para banco de dados:</b> a estrutura já separa empresas, usuários, setores, clientes, tarefas, permissões e histórico. Depois a gente troca o localStorage por tabelas reais e autenticação com envio de e-mail.</div>
+    <div class="app-footer-note"><b>Banco integrado:</b> esta versão usa Supabase para autenticação, recuperação de senha por e-mail e sincronização de empresas, usuários, clientes, tarefas, permissões e histórico.</div>
   </div>`;
 }
 function renderSectorCard(s){
@@ -938,7 +1216,7 @@ function openForgotPassword(){
     const email=val("resetEmail").toLowerCase(); if(!email)return toast("Informe o e-mail.");
     try{
       if(window.CEBackend){ await CEBackend.enviarCodigoRecuperacao(email); const box=document.getElementById("codeBox"); box.classList.remove("hidden"); box.innerHTML=`<b>Código enviado para o e-mail.</b><br><span>Abra seu Gmail/Outlook, copie o código e informe abaixo.</span>`; return; }
-      const u=state.users.find(x=>x.email.toLowerCase()===email); if(!u)return toast("E-mail não encontrado."); const code=String(Math.floor(100000+Math.random()*900000)); state.passwordResets=state.passwordResets.filter(r=>r.email!==email); state.passwordResets.push({email,code,createdAt:Date.now()}); save(); const box=document.getElementById("codeBox"); box.classList.remove("hidden"); box.innerHTML=`<b>Código enviado:</b> ${code}<br><span>Simulação: em produção esse código será enviado para o e-mail do usuário.</span>`;
+return toast("Banco Supabase não carregou. Não é seguro gerar código local. Verifique a conexão do Supabase.");
     }catch(e){toast(e.message||"Erro ao enviar código.");}
   };
   document.getElementById("confirmReset").onclick=async()=>{
