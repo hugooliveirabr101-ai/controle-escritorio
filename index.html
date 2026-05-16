@@ -668,7 +668,7 @@ function bindAuth(){
     if(pass!==pass2) return toast("As senhas não conferem.");
     try{
       if(window.CEBackend){
-        await CEBackend.cadastrarUsuarioSolicitandoAcesso({nome,email,senha:pass,emailEmpresa:companyEmail});
+        await CEBackend.cadastrarUsuarioSolicitandoAcesso({nome:name,email,senha:pass,emailEmpresa:companyEmail});
         toast("Solicitação enviada ao ADM principal. Aguarde aprovação."); return;
       }
       return toast("Banco Supabase não carregou. A solicitação não foi salva localmente.");
