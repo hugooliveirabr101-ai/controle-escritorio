@@ -107,6 +107,109 @@ let activeTab = "Visão Geral";
 let filtersOpen = false;
 let filterState = {competence:MONTHS[0], status:"Todos", responsible:"Todos", client:"Todos", priority:"Todos"};
 
+let usingSupabase = false;
+let syncingRemote = false;
+
+function dbDate(dateValue){
+  if(!dateValue) return now();
+  try{return new Date(dateValue).toLocaleString("pt-BR");}catch(e){return now();}
+}
+function mapSetorDb(s){
+  const fallback = findTemplateSector(s.chave) || {};
+  return {
+    id:s.id,
+    key:s.chave,
+    name:s.nome || fallback.name || s.chave,
+    icon:s.icone || fallback.icon || "💼",
+    color:s.cor || fallback.color || "#111827",
+    desc:s.descricao || fallback.desc || "Setor da empresa",
+    tabs:Array.isArray(s.abas)?s.abas:(fallback.tabs||["Visão Geral","Clientes","Pendências","Performance","Relatório Executivo"]),
+    templates:Array.isArray(s.tarefas_frequentes)?s.tarefas_frequentes:(fallback.templates||[])
+  };
+}
+function mapClientDb(c){
+  return {id:c.id,name:c.nome,cnpj:c.documento||"",plan:c.plano||"Bronze",responsible:c.responsavel_padrao||"",segment:c.segmento||"",active:c.ativo!==false,createdAt:dbDate(c.criado_em)};
+}
+function mapTaskDb(t){
+  return {id:t.id,companyId:t.empresa_id,sectorKey:t.setor_chave,clientId:t.cliente_id,tab:t.aba,title:t.titulo,status:t.status,priority:t.prioridade||"Normal",responsible:t.responsavel||"",competence:t.competencia,quantity:Number(t.quantidade)||1,value:Number(t.quantidade_dinheiro)||0,partner:t.socio_beneficiario||"",dueDate:t.prazo||"",avgHours:Number(t.tempo_medio)||0,notes:t.observacao||"",createdBy:t.criado_por,updatedBy:t.atualizado_por,createdAt:dbDate(t.criado_em),updatedAt:dbDate(t.atualizado_em)};
+}
+function mapProfileDb(p){
+  return {id:p.user_id || p.id, profileId:p.id,companyId:p.empresa_id,name:p.nome||p.email,email:p.email||"",password:"",role:p.role||"user",status:p.status,permissions:p.setores_permitidos||[],preferences:p.preferencias||{},createdAt:dbDate(p.criado_em)};
+}
+function mapLogDb(l){
+  return {id:l.id,companyId:l.empresa_id,sectorKey:l.setor_chave,userId:l.user_id,userName:"Usuário",action:l.acao,detail:l.detalhe,date:dbDate(l.criado_em)};
+}
+function clientToDb(c){
+  return {empresa_id:getCompany().id,nome:c.name,documento:c.cnpj||null,plano:c.plan||null,responsavel_padrao:c.responsible||null,segmento:c.segment||null,ativo:c.active!==false};
+}
+function taskToDb(t){
+  return {empresa_id:t.companyId,setor_chave:t.sectorKey,cliente_id:t.clientId||null,aba:t.tab,titulo:t.title,status:t.status,prioridade:t.priority||"Normal",responsavel:t.responsible||null,competencia:t.competence,quantidade:Number(t.quantity)||1,quantidade_dinheiro:Number(t.value)||0,socio_beneficiario:t.partner||null,prazo:t.dueDate||null,tempo_medio:Number(t.avgHours)||0,observacao:t.notes||null};
+}
+async function hydrateFromSupabase(){
+  if(!window.CEBackend) return false;
+  const ctx = await CEBackend.contextoAtual();
+  if(!ctx || !ctx.perfil || !ctx.empresa) return false;
+  if(ctx.perfil.status !== "approved") throw new Error("Seu acesso foi enviado, mas ainda está pendente de aprovação pelo ADM principal.");
+  const empresaId = ctx.empresa.id;
+  const [setoresDb, clientesDb, tarefasDb, histDb, pendDb] = await Promise.all([
+    CEBackend.listarSetores(empresaId),
+    CEBackend.listarClientes(empresaId),
+    CEBackend.listarTarefas(empresaId),
+    CEBackend.listarHistorico(empresaId).catch(()=>[]),
+    CEBackend.listarSolicitacoesPendentes(empresaId).catch(()=>[])
+  ]);
+  const {data: perfisDb, error: perfisError} = await CEBackend.supabaseClient.from("usuarios_empresa").select("*").eq("empresa_id", empresaId).order("criado_em", {ascending:true});
+  if(perfisError) throw perfisError;
+  const company={
+    id:ctx.empresa.id,
+    name:ctx.empresa.nome,
+    email:ctx.empresa.email_principal,
+    password:"",
+    createdAt:dbDate(ctx.empresa.criada_em),
+    sectors:(setoresDb||[]).map(mapSetorDb),
+    clients:(clientesDb||[]).map(mapClientDb),
+    requests:(pendDb||[]).map(p=>({id:p.id,profileId:p.id,name:p.nome,email:p.email,status:p.status,createdAt:dbDate(p.criado_em)}))
+  };
+  state={companies:[company],users:(perfisDb||[]).map(mapProfileDb),tasks:(tarefasDb||[]).map(mapTaskDb),logs:(histDb||[]).map(mapLogDb),passwordResets:[]};
+  session={userId:ctx.perfil.user_id,companyId:empresaId};
+  usingSupabase=true;
+  save(); saveSession();
+  return true;
+}
+async function syncClientToSupabase(c){
+  if(!usingSupabase || !window.CEBackend || syncingRemote) return;
+  try{
+    if(String(c.id).startsWith("cli_")){
+      const saved = await CEBackend.salvarCliente(clientToDb(c));
+      c.id=saved.id; c.createdAt=dbDate(saved.criado_em); save();
+    } else {
+      await CEBackend.atualizarCliente(c.id, clientToDb(c));
+    }
+  }catch(e){console.error(e);toast("Não consegui sincronizar o cliente no banco: "+e.message);}
+}
+async function syncTaskToSupabase(t){
+  if(!usingSupabase || !window.CEBackend || syncingRemote) return;
+  try{
+    if(String(t.id).startsWith("tsk_")){
+      const saved = await CEBackend.salvarTarefa(taskToDb(t));
+      t.id=saved.id; t.createdAt=dbDate(saved.criado_em); t.updatedAt=dbDate(saved.atualizado_em); save();
+    } else {
+      await CEBackend.atualizarTarefa(t.id, taskToDb(t));
+    }
+  }catch(e){console.error(e);toast("Não consegui sincronizar a tarefa no banco: "+e.message);}
+}
+async function boot(){
+  const app=document.getElementById("app");
+  app.innerHTML='<section class="auth-shell"><div class="auth-hero"><div class="brand"><div class="brand-mark">CE</div><div><h1>Controle Escritório</h1><p>Carregando sistema...</p></div></div></div></section>';
+  try{
+    if(window.CEBackend){
+      const ok = await hydrateFromSupabase();
+      if(ok){screen="dashboard";render();return;}
+    }
+  }catch(e){console.warn(e); localStorage.removeItem(SESSION_KEY); session=null; toast(e.message||"Não foi possível carregar sessão do Supabase.");}
+  render();
+}
+
 function uid(prefix="id"){ return prefix + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
 function now(){ return new Date().toLocaleString("pt-BR"); }
 function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
@@ -146,8 +249,12 @@ function parseMoney(v){ if(typeof v==='number') return v; return Number(String(v
 function setupMoneyInput(id,previewId){ const el=document.getElementById(id); if(!el)return; const update=()=>{ const n=parseMoney(el.value); el.value=formatMoney(n); if(previewId&&document.getElementById(previewId)) document.getElementById(previewId).textContent=formatMoney(n); }; el.onfocus=()=>{ const n=parseMoney(el.value); el.value=n?String(n).replace('.',','):''; }; el.onblur=update; update(); }
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2600); }
 function addLog(sectorKey, action, detail){
-  state.logs.unshift({id:uid("log_"), companyId:getCompany()?.id, sectorKey, userId:getUser()?.id, userName:getUser()?.name || "Sistema", action, detail, date:now()});
+  const log={id:uid("log_"), companyId:getCompany()?.id, sectorKey, userId:getUser()?.id, userName:getUser()?.name || "Sistema", action, detail, date:now()};
+  state.logs.unshift(log);
   save();
+  if(usingSupabase && window.CEBackend && log.companyId){
+    CEBackend.registrarHistorico({empresa_id:log.companyId,setor_chave:sectorKey,acao:action,detalhe:detail}).catch(e=>console.warn("Histórico não sincronizado",e));
+  }
 }
 function statusClass(st){ return normalizeStatusForDone(st)?"ok":st==="Atrasada"||st==="Crítica"?"bad":String(st||"").includes("andamento")||String(st||"").includes("elaboração")||String(st||"").includes("execução")?"info":"warn"; }
 function normalizeKey(name){ return String(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"") || uid("setor_"); }
@@ -240,34 +347,55 @@ function bindAuth(){
     ["authLogin","authCompany","authUser"].forEach(id=>document.getElementById(id).classList.add("hidden"));
     document.getElementById(btn.dataset.authTab==="login"?"authLogin":btn.dataset.authTab==="company"?"authCompany":"authUser").classList.remove("hidden");
   });
-  document.getElementById("btnLogin").onclick=()=>{
+  document.getElementById("btnLogin").onclick=async()=>{
     const email=document.getElementById("loginEmail").value.trim().toLowerCase();
     const pass=document.getElementById("loginPass").value;
-    const u=state.users.find(x=>x.email.toLowerCase()===email && x.password===pass && x.status!=="pending");
-    if(!u) return toast("E-mail ou senha inválidos, ou usuário ainda não aprovado.");
-    session={userId:u.id,companyId:u.companyId}; saveSession(); screen="dashboard"; render();
+    if(!email||!pass) return toast("Informe e-mail e senha.");
+    try{
+      if(window.CEBackend){
+        await CEBackend.login(email,pass);
+        await hydrateFromSupabase();
+        screen="dashboard"; render(); toast("Login realizado com sucesso."); return;
+      }
+      const u=state.users.find(x=>x.email.toLowerCase()===email && x.password===pass && x.status!=="pending");
+      if(!u) return toast("E-mail ou senha inválidos, ou usuário ainda não aprovado.");
+      session={userId:u.id,companyId:u.companyId}; saveSession(); screen="dashboard"; render();
+    }catch(e){toast(e.message||"Não foi possível entrar.");}
   };
-  document.getElementById("btnCreateCompany").onclick=()=>{
+  document.getElementById("btnCreateCompany").onclick=async()=>{
     const name=document.getElementById("companyName").value.trim();
     const email=document.getElementById("companyEmail").value.trim().toLowerCase();
     const adminName=document.getElementById("companyAdminName").value.trim()||"ADM Principal";
     const p=document.getElementById("companyPass").value; const p2=document.getElementById("companyPass2").value;
     if(!name||!email||!p) return toast("Preencha nome, e-mail e senha.");
     if(p!==p2) return toast("As senhas não conferem.");
-    if(state.companies.some(c=>c.email.toLowerCase()===email)) return toast("Já existe empresa com esse e-mail.");
-    const companyId=uid("comp_"); const userId=uid("usr_");
-    const company={id:companyId,name,email,password:p,createdAt:now(),sectors:deepClone(SECTOR_LIBRARY),clients:[],requests:[]};
-    const user={id:userId,companyId,name:adminName,email,password:p,role:"owner",permissions:company.sectors.map(s=>s.key),preferences:{}};
-    state.companies.push(company); state.users.push(user); session={userId,companyId}; save(); saveSession(); render(); toast("Empresa criada com sucesso.");
+    try{
+      if(window.CEBackend){
+        await CEBackend.cadastrarEmpresa({nomeEmpresa:name,emailEmpresa:email,nomeUsuario:adminName,emailUsuario:email,senha:p});
+        await hydrateFromSupabase();
+        screen="dashboard"; render(); toast("Empresa criada no banco com sucesso."); return;
+      }
+      if(state.companies.some(c=>c.email.toLowerCase()===email)) return toast("Já existe empresa com esse e-mail.");
+      const companyId=uid("comp_"); const userId=uid("usr_");
+      const company={id:companyId,name,email,password:p,createdAt:now(),sectors:deepClone(SECTOR_LIBRARY),clients:[],requests:[]};
+      const user={id:userId,companyId,name:adminName,email,password:p,role:"owner",permissions:company.sectors.map(s=>s.key),preferences:{}};
+      state.companies.push(company); state.users.push(user); session={userId,companyId}; save(); saveSession(); render(); toast("Empresa criada com sucesso.");
+    }catch(e){toast(e.message||"Erro ao criar empresa no banco.");}
   };
-  document.getElementById("btnRequestAccess").onclick=()=>{
+  document.getElementById("btnRequestAccess").onclick=async()=>{
     const name=document.getElementById("reqName").value.trim(); const email=document.getElementById("reqEmail").value.trim().toLowerCase(); const companyEmail=document.getElementById("reqCompanyEmail").value.trim().toLowerCase(); const pass=document.getElementById("reqPass").value; const pass2=document.getElementById("reqPass2").value;
-    const company=state.companies.find(c=>c.email.toLowerCase()===companyEmail);
     if(!name||!email||!companyEmail||!pass) return toast("Preencha todos os campos.");
     if(pass!==pass2) return toast("As senhas não conferem.");
-    if(!company) return toast("Empresa não encontrada.");
-    if(state.users.some(u=>u.email.toLowerCase()===email && u.companyId===company.id)) return toast("Esse e-mail já existe nessa empresa.");
-    company.requests.push({id:uid("req_"),name,email,password:pass,createdAt:now(),status:"pending"}); save(); toast("Solicitação enviada ao ADM principal.");
+    try{
+      if(window.CEBackend){
+        await CEBackend.cadastrarUsuarioSolicitandoAcesso({nome,email,senha:pass,emailEmpresa:companyEmail});
+        toast("Solicitação enviada ao ADM principal. Aguarde aprovação."); return;
+      }
+      const company=state.companies.find(c=>c.email.toLowerCase()===companyEmail);
+      if(!company) return toast("Empresa não encontrada.");
+      if(state.users.some(u=>u.email.toLowerCase()===email && u.companyId===company.id)) return toast("Esse e-mail já existe nessa empresa.");
+      company.requests.push({id:uid("req_"),name,email,password:pass,createdAt:now(),status:"pending"}); save(); toast("Solicitação enviada ao ADM principal.");
+    }catch(e){toast(e.message||"Erro ao enviar solicitação.");}
   };
   document.getElementById("forgotPass").onclick=openForgotPassword;
   document.getElementById("demoBtn").onclick=createDemo;
@@ -313,7 +441,7 @@ function renderScreen(){
 function bindApp(){
   document.querySelectorAll("[data-screen]").forEach(btn=>btn.onclick=()=>{screen=btn.dataset.screen;activeSectorKey=null;render();});
   document.querySelectorAll("[data-sector]").forEach(btn=>btn.onclick=()=>{ const key=btn.dataset.sector; if(!canAccessSector(key)) return toast("Você não tem permissão para acessar esse setor."); activeSectorKey=key; activeTab="Visão Geral"; screen="sector"; render(); });
-  document.getElementById("logout").onclick=()=>{session=null; localStorage.removeItem(SESSION_KEY); render();};
+  document.getElementById("logout").onclick=async()=>{try{if(window.CEBackend) await CEBackend.logout();}catch(e){} session=null; usingSupabase=false; localStorage.removeItem(SESSION_KEY); render();};
   const hamb=document.getElementById("hamb"); if(hamb) hamb.onclick=()=>document.getElementById("sidebar").classList.toggle("open");
   bindDynamicActions();
   setTimeout(()=>{const el=document.querySelector('.side-nav button.active[data-sector]'); if(el) el.scrollIntoView({block:'nearest'});},0);
@@ -694,9 +822,9 @@ function bindDynamicActions(){
   document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;render();});
   const filt=document.querySelector("[data-open-filters]"); if(filt) filt.onclick=()=>{filtersOpen=!filtersOpen;render();};
   ["fCompetence","fStatus","fResp","fClient","fPriority"].forEach(id=>{const el=document.getElementById(id); if(el) el.onchange=()=>{filterState={competence:document.getElementById("fCompetence").value,status:document.getElementById("fStatus").value,responsible:document.getElementById("fResp").value,client:document.getElementById("fClient").value,priority:document.getElementById("fPriority").value}; render();};});
-  const addClient=document.getElementById("addClient"); if(addClient) addClient.onclick=()=>{ const c={id:uid("cli_"),name:val("cliName"),cnpj:val("cliCnpj"),plan:val("cliPlan"),responsible:val("cliResponsible"),segment:val("cliSegment"),active:true,createdAt:now()}; if(!c.name)return toast("Informe o nome do cliente."); getCompany().clients.push(c); generateFrequentTasksForClient(c.id, filterState.competence); addLog("gestao","Cliente cadastrado",`${c.name} foi adicionado à base geral e entrou nos controles dos setores`); save(); render(); toast("Cliente adicionado e tarefas frequentes criadas."); };
+  const addClient=document.getElementById("addClient"); if(addClient) addClient.onclick=async()=>{ const c={id:uid("cli_"),name:val("cliName"),cnpj:val("cliCnpj"),plan:val("cliPlan"),responsible:val("cliResponsible"),segment:val("cliSegment"),active:true,createdAt:now()}; if(!c.name)return toast("Informe o nome do cliente."); getCompany().clients.push(c); await syncClientToSupabase(c); generateFrequentTasksForClient(c.id, filterState.competence); addLog("gestao","Cliente cadastrado",`${c.name} foi adicionado à base geral e entrou nos controles dos setores`); save(); render(); toast("Cliente adicionado e tarefas frequentes criadas."); };
   const gen=document.getElementById("generateMonth"); if(gen) gen.onclick=()=>{generateMonthlyTasks(filterState.competence,true);render();toast("Pendências mensais geradas para todos os setores.");};
-  document.querySelectorAll("[data-toggle-client]").forEach(b=>b.onclick=()=>{const c=getCompany().clients.find(x=>x.id===b.dataset.toggleClient); c.active=c.active===false; addLog("gestao","Status de cliente alterado",`${c.name}: ${c.active?'ativo':'inativo'}`); save(); render();});
+  document.querySelectorAll("[data-toggle-client]").forEach(b=>b.onclick=async()=>{const c=getCompany().clients.find(x=>x.id===b.dataset.toggleClient); c.active=c.active===false; await syncClientToSupabase(c); addLog("gestao","Status de cliente alterado",`${c.name}: ${c.active?'ativo':'inativo'}`); save(); render();});
   document.querySelectorAll("[data-del-client]").forEach(b=>b.onclick=()=>{const company=getCompany(); const c=company.clients.find(x=>x.id===b.dataset.delClient); company.clients=company.clients.filter(x=>x.id!==b.dataset.delClient); addLog("gestao","Cliente excluído",`${c?.name||'Cliente'} foi removido`); save(); render();});
   document.querySelectorAll("[data-approve]").forEach(b=>b.onclick=()=>approveRequest(b.dataset.approve));
   document.querySelectorAll("[data-reject]").forEach(b=>b.onclick=()=>{const r=getCompany().requests.find(x=>x.id===b.dataset.reject); if(r)r.status="rejected"; save(); render(); toast("Solicitação recusada.");});
@@ -709,7 +837,7 @@ function bindDynamicActions(){
   document.querySelectorAll("[data-new-task-tab]").forEach(b=>b.onclick=()=>openTaskModal({tab:b.dataset.newTaskTab}));
   document.querySelectorAll("[data-new-task-client]").forEach(b=>b.onclick=()=>openTaskModal({clientId:b.dataset.newTaskClient,tab:"Clientes"}));
   document.querySelectorAll("[data-edit-task]").forEach(b=>b.onclick=()=>openTaskModal({taskId:b.dataset.editTask}));
-  document.querySelectorAll("[data-done-task]").forEach(b=>b.onclick=()=>{const t=state.tasks.find(x=>x.id===b.dataset.doneTask); if(t){markTaskAsDone(t);addLog(t.sectorKey,"Tarefa concluída",`${t.title} • ${clientName(t.clientId)}`);save();render();toast("Tarefa concluída.");}});
+  document.querySelectorAll("[data-done-task]").forEach(b=>b.onclick=async()=>{const t=state.tasks.find(x=>x.id===b.dataset.doneTask); if(t){markTaskAsDone(t);await syncTaskToSupabase(t);addLog(t.sectorKey,"Tarefa concluída",`${t.title} • ${clientName(t.clientId)}`);save();render();toast("Tarefa concluída.");}});
   const gensec=document.querySelector("[data-generate-sector-month]"); if(gensec) gensec.onclick=()=>{generateMonthlyTasks(filterState.competence,false,activeSectorKey);render();toast("Pendências do setor geradas.");};
   const hist=document.querySelector("[data-open-history]"); if(hist) hist.onclick=openHistory;
   const sett=document.querySelector("[data-open-sector-settings]"); if(sett) sett.onclick=openSectorSettings;
@@ -720,12 +848,19 @@ function bindDynamicActions(){
   document.querySelectorAll("[data-profit-edit]").forEach(b=>b.onclick=()=>openProfitModal(b.dataset.profitEdit));
 }
 function val(id){return document.getElementById(id)?.value.trim()||"";}
-function approveRequest(id){
+async function approveRequest(id){
   const company=getCompany(); const r=company.requests.find(x=>x.id===id); if(!r)return;
   const perms=[...document.querySelectorAll(`[data-perm="${id}"]:checked`)].map(x=>x.value);
   if(!perms.length) return toast("Escolha pelo menos um setor para liberar.");
-  const u={id:uid("usr_"),companyId:company.id,name:r.name,email:r.email,password:r.password,role:"user",permissions:perms,preferences:{},createdAt:now()};
-  state.users.push(u); r.status="approved"; addLog("gestao","Usuário aprovado",`${u.name} foi aprovado com ${perms.length} setor(es)`); save(); render(); toast("Usuário aprovado.");
+  try{
+    if(usingSupabase && window.CEBackend){
+      const approved = await CEBackend.aprovarUsuario(r.profileId||r.id, perms, "user");
+      const u=mapProfileDb(approved); state.users.push(u); company.requests=company.requests.filter(x=>x.id!==id);
+      addLog("gestao","Usuário aprovado",`${u.name} foi aprovado com ${perms.length} setor(es)`); save(); render(); toast("Usuário aprovado no banco."); return;
+    }
+    const u={id:uid("usr_"),companyId:company.id,name:r.name,email:r.email,password:r.password,role:"user",permissions:perms,preferences:{},createdAt:now()};
+    state.users.push(u); r.status="approved"; addLog("gestao","Usuário aprovado",`${u.name} foi aprovado com ${perms.length} setor(es)`); save(); render(); toast("Usuário aprovado.");
+  }catch(e){toast(e.message||"Erro ao aprovar usuário.");}
 }
 function removeSector(key){ const company=getCompany(); const s=company.sectors.find(x=>x.key===key); if(!s)return; company.sectors=company.sectors.filter(x=>x.key!==key); state.tasks=state.tasks.filter(t=>!(t.companyId===company.id && t.sectorKey===key)); state.users.filter(u=>u.companyId===company.id).forEach(u=>u.permissions=(u.permissions||[]).filter(p=>p!==key)); addLog("gestao","Setor excluído",`${s.name} foi removido`); save(); render(); toast("Setor excluído."); }
 function recurringItemsForSector(sector){
@@ -750,7 +885,7 @@ function generateFrequentTasksForClient(clientId, month, onlySector=null){
       const exists=state.tasks.some(t=>t.companyId===company.id&&t.sectorKey===sector.key&&t.clientId===clientId&&t.competence===month&&t.tab===item.tab&&t.title===item.title);
       if(exists) return;
       const client=company.clients.find(c=>c.id===clientId); const responsible=client?.responsible || getUser().name;
-      state.tasks.push({id:uid("tsk_"),companyId:company.id,sectorKey:sector.key,clientId,title:item.title,tab:item.tab,competence:month,status:item.status||"Pendente",priority:ti===0?"Alta":"Normal",responsible,dueDate:"",avgHours:defaultHours(item.title,sector.key),value:0,quantity:1,notes:"Tarefa frequente gerada automaticamente para o mês de referência.",createdBy:getUser()?.id,updatedBy:getUser()?.id,createdAt:now(),updatedAt:now()});
+      const task={id:uid("tsk_"),companyId:company.id,sectorKey:sector.key,clientId,title:item.title,tab:item.tab,competence:month,status:item.status||"Pendente",priority:ti===0?"Alta":"Normal",responsible,dueDate:"",avgHours:defaultHours(item.title,sector.key),value:0,quantity:1,notes:"Tarefa frequente gerada automaticamente para o mês de referência.",createdBy:getUser()?.id,updatedBy:getUser()?.id,createdAt:now(),updatedAt:now()}; state.tasks.push(task); syncTaskToSupabase(task);
     });
   });
 }
@@ -776,7 +911,7 @@ function openTaskModal(opts={}){
   document.getElementById("taskClient").value = clientId;
   syncTaskWorkflow(edit);
   setupMoneyInput("taskValue","taskMoneyPreview");
-  document.getElementById("saveTask").onclick=()=>{ const data={clientId:val("taskClient"),tab:val("taskTab"),title:val("taskTitle"),status:val("taskStatus"),priority:val("taskPriority"),responsible:val("taskResp"),competence:val("taskMonth"),dueDate:val("taskDue"),avgHours:Number(val("taskHours"))||0,quantity:Number(val("taskQty"))||1,value:parseMoney(val("taskValue")),notes:val("taskNotes")}; if(!data.title)return toast("Escolha a ação da tarefa."); if(edit){Object.assign(edit,data,{updatedBy:getUser().id,updatedAt:now()}); addLog(activeSectorKey,"Tarefa alterada",`${data.title} • ${clientName(data.clientId)}`);} else {state.tasks.push({id:uid("tsk_"),companyId:getCompany().id,sectorKey:activeSectorKey,...data,createdBy:getUser().id,updatedBy:getUser().id,createdAt:now(),updatedAt:now()}); addLog(activeSectorKey,"Tarefa criada",`${data.title} • ${clientName(data.clientId)}`);} save(); closeModal(); render(); toast("Tarefa salva."); };
+  document.getElementById("saveTask").onclick=async()=>{ const data={clientId:val("taskClient"),tab:val("taskTab"),title:val("taskTitle"),status:val("taskStatus"),priority:val("taskPriority"),responsible:val("taskResp"),competence:val("taskMonth"),dueDate:val("taskDue"),avgHours:Number(val("taskHours"))||0,quantity:Number(val("taskQty"))||1,value:parseMoney(val("taskValue")),notes:val("taskNotes")}; if(!data.title)return toast("Escolha a ação da tarefa."); let taskRef; if(edit){Object.assign(edit,data,{updatedBy:getUser().id,updatedAt:now()}); taskRef=edit; addLog(activeSectorKey,"Tarefa alterada",`${data.title} • ${clientName(data.clientId)}`);} else {taskRef={id:uid("tsk_"),companyId:getCompany().id,sectorKey:activeSectorKey,...data,createdBy:getUser().id,updatedBy:getUser().id,createdAt:now(),updatedAt:now()}; state.tasks.push(taskRef); addLog(activeSectorKey,"Tarefa criada",`${data.title} • ${clientName(data.clientId)}`);} await syncTaskToSupabase(taskRef); save(); closeModal(); render(); toast("Tarefa salva."); };
 }
 function openHistory(){ const logs=state.logs.filter(l=>l.companyId===getCompany().id&&l.sectorKey===activeSectorKey); openModal("Histórico do setor", renderHistoryList(logs), "", false); }
 function getSectorPrefs(key){ const u=getUser(); u.preferences??={}; u.preferences[key]??={}; const sector=sectorByKey(key); const raw=u.preferences[key]; const bg=raw.bg||""; const card=raw.card||""; const contrastBase=card||bg||"#f4f6f9"; return {bg,card,accent:raw.accent||sector?.color||"#1d4ed8",font:raw.font||"Inter",language:raw.language||"Português",ink:raw.ink||readableTextFor(contrastBase),muted:raw.muted||readableMutedFor(contrastBase),button:raw.button||"#111827",sidebar:raw.sidebar||"#0d1526",topbar:raw.topbar||"#ffffff",...raw}; }
@@ -795,7 +930,26 @@ function applySectorPreferences(){
 }
 function openAddSector(){ const body=`<div class="form-grid"><div class="field"><label>Nome do setor</label><input id="newSectorName" placeholder="Ex: BPO Financeiro"></div><div class="row"><div class="field"><label>Ícone</label><input id="newSectorIcon" value="💼"></div><div class="field"><label>Cor do setor</label><input id="newSectorColor" type="color" value="#111827"></div></div><div class="field"><label>Descrição</label><textarea id="newSectorDesc" placeholder="Explique o controle desse setor"></textarea></div><div class="field"><label>Abas separadas por vírgula</label><input id="newSectorTabs" value="Visão Geral, Clientes, Pendências, Performance, Ranking, Relatório Executivo"></div><div class="field"><label>Tarefas mensais padrão separadas por vírgula</label><textarea id="newSectorTemplates">Receber documentos, Conferir informações, Executar tarefa mensal, Enviar retorno ao cliente</textarea></div></div>`; openModal("Adicionar novo setor", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="saveSector">Adicionar setor</button>`); document.getElementById("cancelModal").onclick=closeModal; document.getElementById("saveSector").onclick=()=>{const name=val("newSectorName"); if(!name)return toast("Informe o nome do setor."); const key=normalizeKey(name); if(getCompany().sectors.some(s=>s.key===key))return toast("Já existe setor com esse nome."); const s={key,name,icon:val("newSectorIcon")||"💼",color:val("newSectorColor")||"#111827",desc:val("newSectorDesc")||"Setor personalizado",tabs:val("newSectorTabs").split(",").map(x=>x.trim()).filter(Boolean),templates:val("newSectorTemplates").split(",").map(x=>x.trim()).filter(Boolean)}; if(!s.tabs.includes("Performance"))s.tabs.push("Performance"); if(!s.tabs.includes("Relatório Executivo"))s.tabs.push("Relatório Executivo"); getCompany().sectors.push(s); state.users.filter(u=>u.companyId===getCompany().id&&u.role!=="user").forEach(u=>u.permissions.push(key)); addLog("gestao","Setor adicionado",`${name} foi criado`); save(); closeModal(); render(); toast("Setor adicionado.");}; }
 function openUserPermissions(userId){ const u=state.users.find(x=>x.id===userId); const body=`<div class="form-grid"><div class="notice">Usuário: <b>${escapeHtml(u.name)}</b> • ${escapeHtml(u.email)}</div><div class="check-grid">${getCompany().sectors.map(s=>`<label class="check-tile"><input type="checkbox" id="perm_${s.key}" value="${s.key}" ${u.permissions?.includes(s.key)?'checked':''}> ${s.icon} ${escapeHtml(s.name)}</label>`).join("")}</div></div>`; openModal("Editar permissões", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn gold" id="savePerms">Salvar permissões</button>`); document.getElementById("cancelModal").onclick=closeModal; document.getElementById("savePerms").onclick=()=>{u.permissions=[...document.querySelectorAll('[id^="perm_"]:checked')].map(x=>x.value); addLog("gestao","Permissões alteradas",`${u.name} agora tem ${u.permissions.length} setor(es)`); save(); closeModal(); render(); toast("Permissões salvas.");}; }
-function openForgotPassword(){ const body=`<div class="form-grid"><div class="field"><label>E-mail cadastrado</label><input id="resetEmail" placeholder="seuemail@empresa.com.br"></div><button class="btn gold" id="sendCode">Enviar código</button><div id="codeBox" class="notice hidden"></div><div class="row"><div class="field"><label>Código recebido</label><input id="resetCode" placeholder="000000"></div><div class="field"><label>Nova senha</label><input id="resetNewPass" type="password"></div></div></div>`; openModal("Recuperar senha", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn" id="confirmReset">Alterar senha</button>`, true); document.getElementById("cancelModal").onclick=closeModal; document.getElementById("sendCode").onclick=()=>{const email=val("resetEmail").toLowerCase(); const u=state.users.find(x=>x.email.toLowerCase()===email); if(!u)return toast("E-mail não encontrado."); const code=String(Math.floor(100000+Math.random()*900000)); state.passwordResets=state.passwordResets.filter(r=>r.email!==email); state.passwordResets.push({email,code,createdAt:Date.now()}); save(); const box=document.getElementById("codeBox"); box.classList.remove("hidden"); box.innerHTML=`<b>Código enviado:</b> ${code}<br><span>Simulação: em produção esse código será enviado para o e-mail do usuário.</span>`; }; document.getElementById("confirmReset").onclick=()=>{const email=val("resetEmail").toLowerCase(); const code=val("resetCode"); const pass=val("resetNewPass"); const reset=state.passwordResets.find(r=>r.email===email&&r.code===code); if(!reset)return toast("Código inválido."); if(!pass)return toast("Informe a nova senha."); const u=state.users.find(x=>x.email.toLowerCase()===email); u.password=pass; state.passwordResets=state.passwordResets.filter(r=>r!==reset); save(); closeModal(); toast("Senha alterada com sucesso.");}; }
+function openForgotPassword(){
+  const body=`<div class="form-grid"><div class="field"><label>E-mail cadastrado</label><input id="resetEmail" placeholder="seuemail@empresa.com.br"></div><button class="btn gold" id="sendCode">Enviar código</button><div id="codeBox" class="notice hidden"></div><div class="row"><div class="field"><label>Código recebido</label><input id="resetCode" placeholder="000000"></div><div class="field"><label>Nova senha</label><input id="resetNewPass" type="password"></div></div></div>`;
+  openModal("Recuperar senha", body, `<button class="btn secondary" id="cancelModal">Cancelar</button><button class="btn" id="confirmReset">Alterar senha</button>`, true);
+  document.getElementById("cancelModal").onclick=closeModal;
+  document.getElementById("sendCode").onclick=async()=>{
+    const email=val("resetEmail").toLowerCase(); if(!email)return toast("Informe o e-mail.");
+    try{
+      if(window.CEBackend){ await CEBackend.enviarCodigoRecuperacao(email); const box=document.getElementById("codeBox"); box.classList.remove("hidden"); box.innerHTML=`<b>Código enviado para o e-mail.</b><br><span>Abra seu Gmail/Outlook, copie o código e informe abaixo.</span>`; return; }
+      const u=state.users.find(x=>x.email.toLowerCase()===email); if(!u)return toast("E-mail não encontrado."); const code=String(Math.floor(100000+Math.random()*900000)); state.passwordResets=state.passwordResets.filter(r=>r.email!==email); state.passwordResets.push({email,code,createdAt:Date.now()}); save(); const box=document.getElementById("codeBox"); box.classList.remove("hidden"); box.innerHTML=`<b>Código enviado:</b> ${code}<br><span>Simulação: em produção esse código será enviado para o e-mail do usuário.</span>`;
+    }catch(e){toast(e.message||"Erro ao enviar código.");}
+  };
+  document.getElementById("confirmReset").onclick=async()=>{
+    const email=val("resetEmail").toLowerCase(); const code=val("resetCode"); const pass=val("resetNewPass");
+    if(!email||!code||!pass)return toast("Informe e-mail, código e nova senha.");
+    try{
+      if(window.CEBackend){ await CEBackend.confirmarCodigoENovaSenha({email,codigo:code,novaSenha:pass}); closeModal(); toast("Senha alterada com sucesso. Faça login novamente."); return; }
+      const reset=state.passwordResets.find(r=>r.email===email&&r.code===code); if(!reset)return toast("Código inválido."); const u=state.users.find(x=>x.email.toLowerCase()===email); u.password=pass; state.passwordResets=state.passwordResets.filter(r=>r!==reset); save(); closeModal(); toast("Senha alterada com sucesso.");
+    }catch(e){toast(e.message||"Código inválido ou expirado.");}
+  };
+}
 
 function buildReportHTML(sectorKeys, standalone=true){
   const company=getCompany(); const sectors=company.sectors.filter(s=>sectorKeys.includes(s.key));
@@ -819,7 +973,7 @@ function tasksToCSV(tasks){ const head=["Cliente","Setor","Aba","Tarefa","Status
 function clientsToCSV(clients){ const head=["Cliente","CNPJ","Plano","Responsavel","Segmento","Status"]; const rows=clients.map(c=>[c.name,c.cnpj,c.plan,c.responsible,c.segment,c.active!==false?'Ativo':'Inativo'].map(csvEsc).join(";")); return [head.join(";"),...rows].join("\n"); }
 function csvEsc(v){ return `"${String(v??"").replaceAll('"','""')}"`; }
 
-render();
+boot();
 </script>
 </body>
 </html>

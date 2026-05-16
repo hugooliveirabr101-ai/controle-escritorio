@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste Banco Supabase</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      background: #f3f4f6;
+    }
+
+    .card {
+      max-width: 720px;
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #111827;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .gold {
+      background: #c9a45c;
+      color: #111827;
+    }
+
+    pre {
+      background: #111827;
+      color: #d1fae5;
+      padding: 16px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      max-height: 440px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Teste do Banco Real - Controle Escritório</h1>
+
+  <div class="card">
+    <h2>1. Sessão atual</h2>
+    <button id="sessionBtn">Ver sessão atual</button>
+  </div>
+
+  <div class="card">
+    <h2>2. Criar empresa e ADM Principal</h2>
+    <input id="empresaNome" value="Escritório Teste" placeholder="Nome da empresa">
+    <input id="empresaEmail" value="empresa.teste@gmail.com" placeholder="E-mail principal da empresa">
+    <button class="gold" id="criarEmpresaBtn">Criar empresa + ADM + setores padrão</button>
+  </div>
+
+  <div class="card">
+    <h2>3. Carregar minhas empresas</h2>
+    <button id="listarEmpresasBtn">Listar empresas do usuário logado</button>
+  </div>
+
+  <div class="card">
+    <h2>4. Cadastrar cliente teste</h2>
+    <input id="clienteNome" value="Cliente Teste LTDA" placeholder="Nome do cliente">
+    <input id="clienteDocumento" value="00.000.000/0001-00" placeholder="CNPJ/CPF">
+    <input id="clientePlano" value="Bronze" placeholder="Plano">
+    <button id="criarClienteBtn">Cadastrar cliente na primeira empresa encontrada</button>
+    <button id="listarClientesBtn">Listar clientes</button>
+  </div>
+
+  <div class="card">
+    <h2>5. Criar tarefa DRE teste</h2>
+    <button id="criarTarefaBtn">Criar tarefa DRE pendente para o primeiro cliente</button>
+    <button id="listarTarefasBtn">Listar tarefas</button>
+  </div>
+
+  <pre id="resultado">Resultado aparecerá aqui...</pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    const SUPABASE_URL = "https://ccseivxfbwmszegmgicj.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SznpFAglmFsronkE8dhPlg_vcf4j9LU";
+
+    const supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    const resultado = document.getElementById("resultado");
+
+    const setoresPadrao = [
+      {
+        chave: "gestao",
+        nome: "Gestão/Diretores",
+        icone: "🏛️",
+        cor: "#111827",
+        descricao: "Visão executiva, metas, aprovações e resultado geral.",
+        abas: ["Visão Geral", "Clientes", "Metas", "Aprovações", "Equipe", "Financeiro", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Revisar resultado mensal", "Acompanhar inadimplência", "Aprovar relatório executivo"]
+      },
+      {
+        chave: "contabil",
+        nome: "Contábil",
+        icone: "📊",
+        cor: "#1d4ed8",
+        descricao: "Extratos, DRE, balancete, lucro distribuído e fechamento contábil.",
+        abas: ["Visão Geral", "Clientes", "Extratos", "Pendências", "DRE", "Distribuição de Lucros", "Reuniões", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["DRE INICIADA", "DRE FINALIZADA", "DRE ENVIADA"]
+      },
+      {
+        chave: "fiscal",
+        nome: "Fiscal",
+        icone: "🧾",
+        cor: "#0f766e",
+        descricao: "Notas, apurações, impostos, declarações e pendências fiscais.",
+        abas: ["Visão Geral", "Clientes", "Notas Fiscais", "Apuração", "Obrigações", "Reinf/DCTFWeb", "Pendências", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Importar notas fiscais", "Apurar Simples Nacional", "Transmitir Reinf/DCTFWeb"]
+      },
+      {
+        chave: "dp",
+        nome: "Departamento Pessoal",
+        icone: "👥",
+        cor: "#be123c",
+        descricao: "Folha, admissões, férias, rescisões, eSocial e encargos.",
+        abas: ["Visão Geral", "Clientes", "Folha", "Admissões", "Rescisões", "Férias", "eSocial", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Processar folha de pagamento", "Transmitir eventos eSocial", "Gerar encargos"]
+      },
+      {
+        chave: "financeiro",
+        nome: "Financeiros",
+        icone: "💳",
+        cor: "#d97706",
+        descricao: "Entradas, cobranças, contratos, inadimplência e crescimento.",
+        abas: ["Visão Geral", "Clientes", "Entradas", "Cobranças", "Contas a Receber", "Inadimplência", "Fluxo de Caixa", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Emitir cobrança mensal", "Conferir pagamento", "Atualizar inadimplência"]
+      },
+      {
+        chave: "comercial",
+        nome: "Comercial",
+        icone: "🤝",
+        cor: "#16a34a",
+        descricao: "Leads, propostas, vendas, contratos e receita comercial.",
+        abas: ["Visão Geral", "Leads", "Propostas", "Vendas", "Pipeline", "Contratos", "Follow-up", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Cadastrar lead", "Enviar proposta", "Fechar venda"]
+      },
+      {
+        chave: "marketing",
+        nome: "Marketing",
+        icone: "📣",
+        cor: "#ea580c",
+        descricao: "Funil, campanhas, conteúdos, leads e métricas de aquisição.",
+        abas: ["Visão Geral", "Funil", "Campanhas", "Conteúdos", "Métricas", "Leads", "Calendário", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Planejar conteúdo", "Publicar campanha", "Registrar leads gerados"]
+      },
+      {
+        chave: "compliance",
+        nome: "Compliance",
+        icone: "🛡️",
+        cor: "#334155",
+        descricao: "Controles, riscos, políticas, LGPD e conformidade interna.",
+        abas: ["Visão Geral", "Controles", "Riscos", "LGPD", "Políticas", "Auditorias Internas", "Pendências", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Revisar controle interno", "Mapear risco", "Acompanhar plano de ação"]
+      },
+      {
+        chave: "auditoria",
+        nome: "Auditoria",
+        icone: "🔎",
+        cor: "#4f46e5",
+        descricao: "Planejamento, testes, evidências, achados e recomendações.",
+        abas: ["Visão Geral", "Planejamento", "Testes", "Evidências", "Achados", "Recomendações", "Relatório", "Ranking", "Performance", "Relatório Executivo"],
+        tarefas_frequentes: ["Planejar auditoria", "Solicitar evidências", "Finalizar relatório de auditoria"]
+      }
+    ];
+
+    function mostrar(titulo, conteudo) {
+      resultado.textContent = titulo + "\n\n" + JSON.stringify(conteudo, null, 2);
+    }
+
+    function mostrarErro(titulo, erro) {
+      resultado.textContent = titulo + "\n\n" + (erro?.message || JSON.stringify(erro, null, 2));
+    }
+
+    async function usuarioAtual() {
+      const { data, error } = await supabaseClient.auth.getUser();
+
+      if (error || !data.user) {
+        throw new Error("Você precisa estar logado no teste-auth.html antes de testar o banco.");
+      }
+
+      return data.user;
+    }
+
+    async function primeiraEmpresa() {
+      const { data, error } = await supabaseClient
+        .from("empresas")
+        .select("*")
+        .limit(1)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    }
+
+    document.getElementById("sessionBtn").onclick = async () => {
+      try {
+        const user = await usuarioAtual();
+        mostrar("Usuário logado", user);
+      } catch (err) {
+        mostrarErro("Erro ao buscar usuário", err);
+      }
+    };
+
+    document.getElementById("criarEmpresaBtn").onclick = async () => {
+      try {
+        const user = await usuarioAtual();
+
+        const nome = document.getElementById("empresaNome").value.trim();
+        const emailPrincipal = document.getElementById("empresaEmail").value.trim();
+
+        if (!nome || !emailPrincipal) {
+          alert("Informe nome e e-mail da empresa.");
+          return;
+        }
+
+        const { data: empresa, error: empresaError } = await supabaseClient
+          .from("empresas")
+          .insert([{
+            nome: nome,
+            email_principal: emailPrincipal,
+            owner_user_id: user.id
+          }])
+          .select()
+          .single();
+
+        if (empresaError) {
+          mostrarErro("Erro ao criar empresa", empresaError);
+          return;
+        }
+
+        const { data: perfil, error: perfilError } = await supabaseClient
+          .from("usuarios_empresa")
+          .insert([{
+            empresa_id: empresa.id,
+            user_id: user.id,
+            nome: user.email,
+            email: user.email,
+            role: "owner",
+            status: "approved",
+            setores_permitidos: setoresPadrao.map(s => s.chave)
+          }])
+          .select()
+          .single();
+
+        if (perfilError) {
+          mostrarErro("Empresa criada, mas erro ao criar ADM", perfilError);
+          return;
+        }
+
+        const setoresParaInserir = setoresPadrao.map(s => ({
+          empresa_id: empresa.id,
+          chave: s.chave,
+          nome: s.nome,
+          icone: s.icone,
+          cor: s.cor,
+          descricao: s.descricao,
+          abas: s.abas,
+          tarefas_frequentes: s.tarefas_frequentes,
+          ativo: true
+        }));
+
+        const { data: setores, error: setoresError } = await supabaseClient
+          .from("setores")
+          .insert(setoresParaInserir)
+          .select();
+
+        if (setoresError) {
+          mostrarErro("Empresa e ADM criados, mas erro ao criar setores", setoresError);
+          return;
+        }
+
+        mostrar("Empresa, ADM e setores criados com sucesso", {
+          empresa,
+          perfil,
+          setores
+        });
+      } catch (err) {
+        mostrarErro("Erro geral ao criar empresa", err);
+      }
+    };
+
+    document.getElementById("listarEmpresasBtn").onclick = async () => {
+      const { data, error } = await supabaseClient
+        .from("empresas")
+        .select("*")
+        .order("criada_em", { ascending: false });
+
+      if (error) {
+        mostrarErro("Erro ao listar empresas", error);
+        return;
+      }
+
+      mostrar("Empresas encontradas", data);
+    };
+
+    document.getElementById("criarClienteBtn").onclick = async () => {
+      try {
+        const empresa = await primeiraEmpresa();
+
+        const { data, error } = await supabaseClient
+          .from("clientes")
+          .insert([{
+            empresa_id: empresa.id,
+            nome: document.getElementById("clienteNome").value.trim(),
+            documento: document.getElementById("clienteDocumento").value.trim(),
+            plano: document.getElementById("clientePlano").value.trim(),
+            responsavel_padrao: "Responsável Teste",
+            segmento: "Serviços",
+            ativo: true
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          mostrarErro("Erro ao cadastrar cliente", error);
+          return;
+        }
+
+        mostrar("Cliente cadastrado com sucesso", data);
+      } catch (err) {
+        mostrarErro("Erro geral ao cadastrar cliente", err);
+      }
+    };
+
+    document.getElementById("listarClientesBtn").onclick = async () => {
+      try {
+        const empresa = await primeiraEmpresa();
+
+        const { data, error } = await supabaseClient
+          .from("clientes")
+          .select("*")
+          .eq("empresa_id", empresa.id)
+          .order("criada_em", { ascending: false });
+
+        if (error) {
+          mostrarErro("Erro ao listar clientes", error);
+          return;
+        }
+
+        mostrar("Clientes encontrados", data);
+      } catch (err) {
+        mostrarErro("Erro geral ao listar clientes", err);
+      }
+    };
+
+    document.getElementById("criarTarefaBtn").onclick = async () => {
+      try {
+        const user = await usuarioAtual();
+        const empresa = await primeiraEmpresa();
+
+        const { data: clientes, error: clientesError } = await supabaseClient
+          .from("clientes")
+          .select("*")
+          .eq("empresa_id", empresa.id)
+          .limit(1);
+
+        if (clientesError) {
+          mostrarErro("Erro ao buscar cliente", clientesError);
+          return;
+        }
+
+        if (!clientes.length) {
+          alert("Cadastre um cliente antes de criar tarefa.");
+          return;
+        }
+
+        const cliente = clientes[0];
+
+        const { data, error } = await supabaseClient
+          .from("tarefas")
+          .insert([{
+            empresa_id: empresa.id,
+            setor_chave: "contabil",
+            cliente_id: cliente.id,
+            aba: "DRE",
+            titulo: "DRE INICIADA",
+            status: "Pendente",
+            prioridade: "Normal",
+            responsavel: user.email,
+            competencia: "01/2026",
+            quantidade: 1,
+            quantidade_dinheiro: 0,
+            observacao: "Tarefa de teste criada pelo banco real.",
+            criado_por: user.id,
+            atualizado_por: user.id
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          mostrarErro("Erro ao criar tarefa", error);
+          return;
+        }
+
+        mostrar("Tarefa criada com sucesso", data);
+      } catch (err) {
+        mostrarErro("Erro geral ao criar tarefa", err);
+      }
+    };
+
+    document.getElementById("listarTarefasBtn").onclick = async () => {
+      try {
+        const empresa = await primeiraEmpresa();
+
+        const { data, error } = await supabaseClient
+          .from("tarefas")
+          .select("*, clientes(nome)")
+          .eq("empresa_id", empresa.id)
+          .order("criado_em", { ascending: false });
+
+        if (error) {
+          mostrarErro("Erro ao listar tarefas", error);
+          return;
+        }
+
+        mostrar("Tarefas encontradas", data);
+      } catch (err) {
+        mostrarErro("Erro geral ao listar tarefas", err);
+      }
+    };
+  </script>
+</body>
+</html>
